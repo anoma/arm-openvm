@@ -1,0 +1,4 @@
+[workspace]
+members = ["arm_traits", "arm_core", "arm_circuits",]
+exclude = ["arm_circuits/compliance"]
+resolver = "2"
