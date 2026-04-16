@@ -46,6 +46,32 @@ pub struct InstanceDataUnit {
     compliance_proof: Vec<u8>,
 }
 
+impl InstanceDataUnit {
+    pub fn to_compliance_instance(&self) -> ComplianceInstance {
+        ComplianceInstance {
+            created: self
+                .created
+                .iter()
+                .map(|x| CreatedInstance {
+                    commitment: x.tag,
+                    logic_ref: x.logic_ref,
+                })
+                .collect(),
+            consumed: self
+                .consumed
+                .iter()
+                .map(|x| ConsumedInstance {
+                    nullifier: x.tag,
+                    root: self.root,
+                    logic_ref: x.logic_ref,
+                })
+                .collect(),
+            delta_x: self.delta_x,
+            delta_y: self.delta_y,
+        }
+    }
+}
+
 /// The resource-specific output of the aggregation guest program
 pub struct ResourceAggregationInstance {
     pub tag: [u8; 32],
@@ -71,32 +97,4 @@ pub struct Transaction {
     units: Vec<InstanceDataUnit>,
     delta_proof: [u8; 65],
     aggregation_proof: Vec<u8>,
-}
-
-pub fn to_compliance_instance(
-    created: Vec<ResourceInstanceData>,
-    consumed: Vec<ResourceInstanceData>,
-    delta_x: [u32; 8],
-    delta_y: [u32; 8],
-    root: [u8; 32],
-) -> ComplianceInstance {
-    ComplianceInstance {
-        created: created
-            .into_iter()
-            .map(|x| CreatedInstance {
-                commitment: x.tag,
-                logic_ref: x.logic_ref,
-            })
-            .collect(),
-        consumed: consumed
-            .into_iter()
-            .map(|x| ConsumedInstance {
-                nullifier: x.tag,
-                root: root,
-                logic_ref: x.logic_ref,
-            })
-            .collect(),
-        delta_x,
-        delta_y,
-    }
 }
