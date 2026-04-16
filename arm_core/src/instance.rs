@@ -45,6 +45,23 @@ pub struct InstanceDataUnit {
     compliance_proof: Vec<u8>,
 }
 
+/// The resource-specific output of the aggregation guest program
+pub struct ResourceAggregationInstance {
+    pub tag: [u8; 32],
+    pub logic_ref: [u8; 32],
+    pub appdata: AppData,
+    pub root: Option<[u8; 32]>,
+}
+
+/// The action-specific output of the aggregation guest program
+pub struct AggregationInstanceDataUnit {
+    created: Vec<ResourceInstanceData>,
+    consumed: Vec<ResourceInstanceData>,
+    delta_x: [u32; 8],
+    delta_y: [u32; 8],
+    compliance_proof: Vec<u8>,
+}
+
 /// An RM transaction datatype
 /// Assumes one compliance unit per action
 pub struct Transaction {
