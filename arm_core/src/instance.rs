@@ -59,7 +59,6 @@ pub struct AggregationInstanceDataUnit {
     consumed: Vec<ResourceInstanceData>,
     delta_x: [u32; 8],
     delta_y: [u32; 8],
-    compliance_proof: Vec<u8>,
 }
 
 /// An RM transaction datatype
