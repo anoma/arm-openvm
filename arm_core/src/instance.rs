@@ -30,6 +30,7 @@ pub struct AppData {
 /// Currently can be used for both consumed and created resources
 pub struct ResourceInstanceData {
     pub tag: [u8; 32],
+    // this corresponds to the exe_commit
     pub logic_ref: [u8; 32],
     pub appdata: AppData,
     pub logic_proof: Vec<u8>,
