@@ -34,7 +34,6 @@ pub struct ResourceInstanceData {
     pub logic_ref: [u8; 32],
     pub appdata: AppData,
     pub logic_proof: Vec<u8>,
-    pub root: Option<[u8; 32]>,
 }
 
 /// A type implementing both compliance unit and action interfaces
@@ -43,6 +42,7 @@ pub struct InstanceDataUnit {
     consumed: Vec<ResourceInstanceData>,
     delta_x: [u32; 8],
     delta_y: [u32; 8],
+    root: [u8; 32],
     compliance_proof: Vec<u8>,
 }
 
@@ -51,13 +51,13 @@ pub struct ResourceAggregationInstance {
     pub tag: [u8; 32],
     pub logic_ref: [u8; 32],
     pub appdata: AppData,
-    pub root: Option<[u8; 32]>,
 }
 
 /// The action-specific output of the aggregation guest program
 pub struct AggregationInstanceDataUnit {
     created: Vec<ResourceInstanceData>,
     consumed: Vec<ResourceInstanceData>,
+    root: [u8; 32],
     delta_x: [u32; 8],
     delta_y: [u32; 8],
 }
@@ -78,6 +78,7 @@ pub fn to_compliance_instance(
     consumed: Vec<ResourceInstanceData>,
     delta_x: [u32; 8],
     delta_y: [u32; 8],
+    root: [u8; 32],
 ) -> ComplianceInstance {
     ComplianceInstance {
         created: created
@@ -91,7 +92,7 @@ pub fn to_compliance_instance(
             .into_iter()
             .map(|x| ConsumedInstance {
                 nullifier: x.tag,
-                root: x.root.expect("No root provided"),
+                root: root,
                 logic_ref: x.logic_ref,
             })
             .collect(),
