@@ -1,13 +1,13 @@
 //! Delta proof module containing the delta proof, witness, and instance.
 //! Taken from arm-risc0 verbatim
 
+use crate::hash::keccak256;
 use alloc::vec::Vec;
 use k256::ecdsa::{RecoveryId, Signature, SigningKey, VerifyingKey};
 use k256::{
     ProjectivePoint, Scalar, SecretKey,
     elliptic_curve::{PublicKey, ScalarPrimitive, scalar::IsHigh},
 };
-use sha3::{Digest, Keccak256};
 
 /// The delta proof consists of an ECDSA signature and a recovery ID.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,13 +48,12 @@ impl DeltaProof {
     /// Generates a delta proof by signing the given message with the provided witness.
     pub fn prove(message: &[u8], witness: &DeltaWitness) -> Result<DeltaProof, DeltaError> {
         // Hash the message using Keccak256
-        let mut digest = Keccak256::new();
-        digest.update(message);
+        let hash = keccak256(message);
 
         // Sign the hashed message using RFC6979
         let (signature, recid) = witness
             .signing_key
-            .sign_digest_recoverable(digest)
+            .sign_prehash_recoverable(&hash)
             .map_err(|_| DeltaError::DeltaProofGenerationFailed)?;
 
         // On-chain signatures are not supported when recid is 2 or 3.
@@ -84,11 +83,10 @@ impl DeltaProof {
         }
 
         // Hash the message using Keccak256
-        let mut digest = Keccak256::new();
-        digest.update(message);
+        let hash = keccak256(message);
 
         // Verify the signature
-        let vk = VerifyingKey::recover_from_digest(digest, &proof.signature, proof.recid)
+        let vk = VerifyingKey::recover_from_prehash(&hash, &proof.signature, proof.recid)
             .map_err(|_| DeltaError::DeltaProofVerificationFailed)?;
         if vk != instance.verifying_key {
             return Err(DeltaError::DeltaProofVerificationFailed);
