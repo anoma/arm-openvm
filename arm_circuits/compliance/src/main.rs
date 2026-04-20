@@ -1,16 +1,7 @@
-#![no_main]
-#![no_std]
-
-extern crate alloc;
-
-use alloc::vec::Vec;
 use alloy_sol_types::{SolValue, sol};
-use arm_core::compliance::{
-    ComplianceInstance as CoreInstance, ConsumedInstance as CoreConsumed,
-    CreatedInstance as CoreCreated,
-};
+use arm_core::compliance::ComplianceInstance as CoreInstance;
 
-openvm::entry!(main);
+openvm::init!();
 
 sol! {
     struct ConsumedInstance {
@@ -27,8 +18,8 @@ sol! {
     struct ComplianceInstance {
         ConsumedInstance[] consumed;
         CreatedInstance[] created;
-        uint32[8] deltaX;
-        uint32[8] deltaY;
+        bytes32 deltaX;
+        bytes32 deltaY;
     }
 }
 
@@ -51,8 +42,8 @@ fn to_abi(core: CoreInstance) -> ComplianceInstance {
                 logicRef: c.logic_ref.into(),
             })
             .collect(),
-        deltaX: core.delta_x,
-        deltaY: core.delta_y,
+        deltaX: core.delta_x.into(),
+        deltaY: core.delta_y.into(),
     }
 }
 
@@ -61,6 +52,6 @@ fn main() {
     let core_instance = witness.constrain().unwrap();
     let abi_instance = to_abi(core_instance);
     let encoded: Vec<u8> = abi_instance.abi_encode();
-    let digest = openvm_keccak256::keccak256(&encoded);
+    let digest = arm_core::hash::keccak256(&encoded);
     openvm::io::reveal_bytes32(digest);
 }
