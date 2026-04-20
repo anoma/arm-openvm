@@ -40,8 +40,8 @@ pub struct ResourceInstanceData {
 pub struct InstanceDataUnit {
     created: Vec<ResourceInstanceData>,
     consumed: Vec<ResourceInstanceData>,
-    delta_x: [u32; 8],
-    delta_y: [u32; 8],
+    delta_x: [u8; 32],
+    delta_y: [u8; 32],
     root: [u8; 32],
     compliance_proof: Vec<u8>,
 }
@@ -84,8 +84,8 @@ pub struct AggregationInstanceDataUnit {
     created: Vec<ResourceInstanceData>,
     consumed: Vec<ResourceInstanceData>,
     root: [u8; 32],
-    delta_x: [u32; 8],
-    delta_y: [u32; 8],
+    delta_x: [u8; 32],
+    delta_y: [u8; 32],
 }
 
 /// An RM transaction datatype
