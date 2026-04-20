@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use elliptic_curve::hash2curve::{ExpandMsg, ExpandMsgXmd, Expander};
 use openvm_algebra_guest::{Field, IntMod, Reduce};
 use openvm_ecc_guest::weierstrass::WeierstrassPoint;
-use openvm_k256::{Secp256k1Coord as CoordField, Secp256k1Point};
+use openvm_k256::{Secp256k1Coord as ScalarPoint, Secp256k1Point};
 use openvm_sha2::Sha256;
 
 /// Domain separation tag. Mirrors arm-risc0's RFC 9380 test-vector DST for
@@ -36,8 +36,8 @@ pub fn hash_from_bytes(msg: &[u8], dst: &[u8]) -> Secp256k1Point {
 // https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L53-L88
 
 /// A' of the isogenous curve y² = x³ + A'x + B'.
-fn map_a() -> CoordField {
-    CoordField::from_be_bytes_unchecked(&[
+fn map_a() -> ScalarPoint {
+    ScalarPoint::from_be_bytes_unchecked(&[
         0x3f, 0x87, 0x31, 0xab, 0xdd, 0x66, 0x1a, 0xdc, 0xa0, 0x8a, 0x55, 0x58, 0xf0, 0xf5, 0xd2,
         0x72, 0xe9, 0x53, 0xd3, 0x63, 0xcb, 0x6f, 0x0e, 0x5d, 0x40, 0x54, 0x47, 0xc0, 0x1a, 0x44,
         0x45, 0x33,
@@ -45,13 +45,13 @@ fn map_a() -> CoordField {
 }
 
 /// B' of the isogenous curve (= 1771).
-fn map_b() -> CoordField {
-    CoordField::from_u32(0x06eb)
+fn map_b() -> ScalarPoint {
+    ScalarPoint::from_u32(0x06eb)
 }
 
 /// Z = -11 mod p, the SSWU non-residue choice for secp256k1.
-fn z_param() -> CoordField {
-    CoordField::from_be_bytes_unchecked(&[
+fn z_param() -> ScalarPoint {
+    ScalarPoint::from_be_bytes_unchecked(&[
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0xff, 0xff,
         0xfc, 0x24,
@@ -60,8 +60,8 @@ fn z_param() -> CoordField {
 
 /// c2 = √(-Z) mod p, precomputed. Used in the SSWU map when g(x₁) has no
 /// square root and we fall back to x₂.
-fn c2_param() -> CoordField {
-    CoordField::from_be_bytes_unchecked(&[
+fn c2_param() -> ScalarPoint {
+    ScalarPoint::from_be_bytes_unchecked(&[
         0x25, 0xe9, 0x71, 0x1a, 0xe8, 0xc0, 0xda, 0xdc, 0x46, 0xfd, 0xbc, 0xb7, 0x2a, 0xad, 0xd8,
         0xf4, 0x25, 0x0b, 0x65, 0x07, 0x30, 0x12, 0xec, 0x80, 0xbc, 0x6e, 0xcb, 0x9c, 0x12, 0x97,
         0x39, 0x75,
@@ -73,13 +73,13 @@ fn c2_param() -> CoordField {
 
 /// Maps a field element `u` to a point `(x, y)` on the isogenous curve
 /// y² = x³ + A'x + B'. The result is mapped to secp256k1 by the isogeny.
-fn osswu(u: &CoordField) -> (CoordField, CoordField) {
+fn osswu(u: &ScalarPoint) -> (ScalarPoint, ScalarPoint) {
     let a = map_a();
     let b = map_b();
     let z = z_param();
     let c2 = c2_param();
-    let one = CoordField::from_u32(1);
-    let zero = CoordField::from_u32(0);
+    let one = ScalarPoint::from_u32(1);
+    let zero = ScalarPoint::from_u32(0);
 
     let tv1 = u.square();
     let tv3 = &z * &tv1;
@@ -128,7 +128,7 @@ fn osswu(u: &CoordField) -> (CoordField, CoordField) {
 
 /// Port of `impl Sgn0 for FieldElement` (k256 L46–L50):
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L46-L50>
-fn is_odd(x: &CoordField) -> bool {
+fn is_odd(x: &ScalarPoint) -> bool {
     x.as_le_bytes()[0] & 1 == 1
 }
 
@@ -136,7 +136,7 @@ fn is_odd(x: &CoordField) -> bool {
 /// `FieldElement::sqrt` (internally `pow_vartime`), which isn't exposed by
 /// `openvm-k256` at beta.2. We open-code the exponentiation here.
 /// The exponent (p-3)/4 is specified by RFC 9380 §I.2.
-fn pow_c1(x: &CoordField) -> CoordField {
+fn pow_c1(x: &ScalarPoint) -> ScalarPoint {
     // (p-3)/4 as little-endian u64 limbs, where p = 2^256 - 2^32 - 977.
     let c1: [u64; 4] = [
         0xffff_ffff_bfff_ff0b,
@@ -144,7 +144,7 @@ fn pow_c1(x: &CoordField) -> CoordField {
         0xffff_ffff_ffff_ffff,
         0x3fff_ffff_ffff_ffff,
     ];
-    let mut result = CoordField::from_u32(1);
+    let mut result = ScalarPoint::from_u32(1);
     let mut base = x.clone();
     for limb in c1 {
         let mut bits = limb;
@@ -164,7 +164,7 @@ fn pow_c1(x: &CoordField) -> CoordField {
 
 /// Upstream k256 inlines the polynomial evaluation in its `fn isogeny`;
 /// this helper extracts the same logic so the four polynomials share it.
-fn horner(coeffs: &[CoordField], x: &CoordField) -> CoordField {
+fn horner(coeffs: &[ScalarPoint], x: &ScalarPoint) -> ScalarPoint {
     let mut result = coeffs[coeffs.len() - 1].clone();
     for i in (0..coeffs.len() - 1).rev() {
         result = &(&result * x) + &coeffs[i];
@@ -175,24 +175,24 @@ fn horner(coeffs: &[CoordField], x: &CoordField) -> CoordField {
 /// Numerator of the x-coordinate isogeny map (degree 3).
 /// k256 `XNUM` constant at L172–L193:
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L172-L193>
-fn xnum() -> [CoordField; 4] {
+fn xnum() -> [ScalarPoint; 4] {
     [
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38,
             0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8d,
             0xaa, 0xaa, 0xa8, 0xc7,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x07, 0xd3, 0xd4, 0xc8, 0x0b, 0xc3, 0x21, 0xd5, 0xb9, 0xf3, 0x15, 0xce, 0xa7, 0xfd,
             0x44, 0xc5, 0xd5, 0x95, 0xd2, 0xfc, 0x0b, 0xf6, 0x3b, 0x92, 0xdf, 0xff, 0x10, 0x44,
             0xf1, 0x7c, 0x65, 0x81,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x53, 0x4c, 0x32, 0x8d, 0x23, 0xf2, 0x34, 0xe6, 0xe2, 0xa4, 0x13, 0xde, 0xca, 0x25,
             0xca, 0xec, 0xe4, 0x50, 0x61, 0x44, 0x03, 0x7c, 0x40, 0x31, 0x4e, 0xcb, 0xd0, 0xb5,
             0x3d, 0x9d, 0xd2, 0x62,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38,
             0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8e, 0x38, 0xe3, 0x8d,
             0xaa, 0xaa, 0xa8, 0x8c,
@@ -203,43 +203,43 @@ fn xnum() -> [CoordField; 4] {
 /// Denominator of the x-coordinate isogeny map (degree 2; leading coefficient 1).
 /// k256 `XDEN` constant at L194–L210:
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L194-L210>
-fn xden() -> [CoordField; 3] {
+fn xden() -> [ScalarPoint; 3] {
     [
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0xd3, 0x57, 0x71, 0x19, 0x3d, 0x94, 0x91, 0x8a, 0x9c, 0xa3, 0x4c, 0xcb, 0xb7, 0xb6,
             0x40, 0xdd, 0x86, 0xcd, 0x40, 0x95, 0x42, 0xf8, 0x48, 0x7d, 0x9f, 0xe6, 0xb7, 0x45,
             0x78, 0x1e, 0xb4, 0x9b,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0xed, 0xad, 0xc6, 0xf6, 0x43, 0x83, 0xdc, 0x1d, 0xf7, 0xc4, 0xb2, 0xd5, 0x1b, 0x54,
             0x22, 0x54, 0x06, 0xd3, 0x6b, 0x64, 0x1f, 0x5e, 0x41, 0xbb, 0xc5, 0x2a, 0x56, 0x61,
             0x2a, 0x8c, 0x6d, 0x14,
         ]),
-        CoordField::from_u32(1),
+        ScalarPoint::from_u32(1),
     ]
 }
 
 /// Numerator of the y-coordinate isogeny map (degree 3).
 /// k256 `YNUM` constant at L211–L232:
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L211-L232>
-fn ynum() -> [CoordField; 4] {
+fn ynum() -> [ScalarPoint; 4] {
     [
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x4b, 0xda, 0x12, 0xf6, 0x84, 0xbd, 0xa1, 0x2f, 0x68, 0x4b, 0xda, 0x12, 0xf6, 0x84,
             0xbd, 0xa1, 0x2f, 0x68, 0x4b, 0xda, 0x12, 0xf6, 0x84, 0xbd, 0xa1, 0x2f, 0x68, 0x4b,
             0x8e, 0x38, 0xe2, 0x3c,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0xc7, 0x5e, 0x0c, 0x32, 0xd5, 0xcb, 0x7c, 0x0f, 0xa9, 0xd0, 0xa5, 0x4b, 0x12, 0xa0,
             0xa6, 0xd5, 0x64, 0x7a, 0xb0, 0x46, 0xd6, 0x86, 0xda, 0x6f, 0xdf, 0xfc, 0x90, 0xfc,
             0x20, 0x1d, 0x71, 0xa3,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x29, 0xa6, 0x19, 0x46, 0x91, 0xf9, 0x1a, 0x73, 0x71, 0x52, 0x09, 0xef, 0x65, 0x12,
             0xe5, 0x76, 0x72, 0x28, 0x30, 0xa2, 0x01, 0xbe, 0x20, 0x18, 0xa7, 0x65, 0xe8, 0x5a,
             0x9e, 0xce, 0xe9, 0x31,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x2f, 0x68, 0x4b, 0xda, 0x12, 0xf6, 0x84, 0xbd, 0xa1, 0x2f, 0x68, 0x4b, 0xda, 0x12,
             0xf6, 0x84, 0xbd, 0xa1, 0x2f, 0x68, 0x4b, 0xda, 0x12, 0xf6, 0x84, 0xbd, 0xa1, 0x2f,
             0x38, 0xe3, 0x8d, 0x84,
@@ -250,31 +250,31 @@ fn ynum() -> [CoordField; 4] {
 /// Denominator of the y-coordinate isogeny map (degree 3; leading coefficient 1).
 /// k256 `YDEN` constant at L233–L254:
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L233-L254>
-fn yden() -> [CoordField; 4] {
+fn yden() -> [ScalarPoint; 4] {
     [
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
             0xff, 0xff, 0xf9, 0x3b,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x7a, 0x06, 0x53, 0x4b, 0xb8, 0xbd, 0xb4, 0x9f, 0xd5, 0xe9, 0xe6, 0x63, 0x27, 0x22,
             0xc2, 0x98, 0x94, 0x67, 0xc1, 0xbf, 0xc8, 0xe8, 0xd9, 0x78, 0xdf, 0xb4, 0x25, 0xd2,
             0x68, 0x5c, 0x25, 0x73,
         ]),
-        CoordField::from_be_bytes_unchecked(&[
+        ScalarPoint::from_be_bytes_unchecked(&[
             0x64, 0x84, 0xaa, 0x71, 0x65, 0x45, 0xca, 0x2c, 0xf3, 0xa7, 0x0c, 0x3f, 0xa8, 0xfe,
             0x33, 0x7e, 0x0a, 0x3d, 0x21, 0x16, 0x2f, 0x0d, 0x62, 0x99, 0xa7, 0xbf, 0x81, 0x92,
             0xbf, 0xd2, 0xa7, 0x6f,
         ]),
-        CoordField::from_u32(1),
+        ScalarPoint::from_u32(1),
     ]
 }
 
 /// Port of `isogeny` in k256 (L255–L267 — the evaluation block following
 /// the coefficient constants):
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L255-L267>
-fn isogeny(rx: CoordField, ry: CoordField) -> (CoordField, CoordField) {
+fn isogeny(rx: ScalarPoint, ry: ScalarPoint) -> (ScalarPoint, ScalarPoint) {
     let x_num = horner(&xnum(), &rx);
     let x_den = horner(&xden(), &rx);
     let y_num = horner(&ynum(), &rx);
@@ -285,17 +285,17 @@ fn isogeny(rx: CoordField, ry: CoordField) -> (CoordField, CoordField) {
 }
 
 /// RFC 9380 §5.3: `expand_message_xmd<SHA-256>` followed by reduction to
-/// `count` field elements in `CoordField` (secp256k1 base field, L = 48 per element).
+/// `count` field elements in `ScalarPoint` (secp256k1 base field, L = 48 per element).
 ///
 /// Delegates the XMD loop to `elliptic_curve::hash2curve::ExpandMsgXmd`
 /// parametrised with `openvm_sha2::Sha256`; the SHA-256 calls route through
 /// the openvm precompile on zkvm and through upstream `sha2::Sha256` on host
 /// (both implement `sha2::digest::Digest` via the blanket impl).
 ///
-/// The per-element reduction uses openvm-k256's `CoordField::reduce_be_bytes`, which
+/// The per-element reduction uses openvm-k256's `ScalarPoint::reduce_be_bytes`, which
 /// matches k256's `impl Reduce<Array<u8, U48>> for FieldElement` at L22–L44:
 /// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L22-L44>
-fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<CoordField> {
+fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<ScalarPoint> {
     let len_in_bytes = count * 48;
     let dsts: &[&[u8]] = &[dst];
     let mut expander = ExpandMsgXmd::<Sha256>::expand_message(&[msg], dsts, len_in_bytes).unwrap();
@@ -308,7 +308,7 @@ fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<CoordField> {
         // chunk to 64 bytes so the reduction treats it as a big-endian integer.
         let mut padded = [0u8; 64];
         padded[16..].copy_from_slice(&chunk);
-        result.push(CoordField::reduce_be_bytes(&padded));
+        result.push(ScalarPoint::reduce_be_bytes(&padded));
     }
     result
 }
