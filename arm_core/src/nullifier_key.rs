@@ -7,7 +7,7 @@ use arm_traits::nullifier_key::RMNullifierKey;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct NullifierKey {
-    bytes: [u8; 32],
+    pub bytes: [u8; 32],
 }
 
 impl NullifierKey {

@@ -18,14 +18,14 @@ pub struct SparseTree {
 /// A sibling struct for merkle proofs
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Sibling {
-    is_left: bool,
-    node: [u8; 32],
+    pub is_left: bool,
+    pub node: [u8; 32],
 }
 
 /// A proof struct for the merkle tree
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Proof {
-    path: Vec<Sibling>,
+    pub path: Vec<Sibling>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

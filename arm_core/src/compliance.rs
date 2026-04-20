@@ -12,23 +12,23 @@ use openvm_ecc_guest::{CyclicGroup, weierstrass::WeierstrassPoint};
 use openvm_k256::{Secp256k1Point as CurvePoint, Secp256k1Scalar as Scalar};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-struct ConsumedWitness {
-    resource: Resource,
-    nullifier_key: NullifierKey,
-    path: Proof,
-    delta_extra_input: [u8; 32],
+pub struct ConsumedWitness {
+    pub resource: Resource,
+    pub nullifier_key: NullifierKey,
+    pub path: Proof,
+    pub delta_extra_input: [u8; 32],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-struct CreatedWitness {
-    resource: Resource,
-    delta_extra_input: [u8; 32],
+pub struct CreatedWitness {
+    pub resource: Resource,
+    pub delta_extra_input: [u8; 32],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ComplianceWitness {
-    consumed: Vec<ConsumedWitness>,
-    created: Vec<CreatedWitness>,
+    pub consumed: Vec<ConsumedWitness>,
+    pub created: Vec<CreatedWitness>,
 }
 
 pub struct ConsumedInstance {
