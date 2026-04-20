@@ -53,9 +53,15 @@ impl ConsumedWitness {
     pub fn constrain(&self) -> ConsumedInstance {
         let commitment = self.resource.commit();
 
+        let root = if self.resource.is_ephemeral {
+            [0u8; 32]
+        } else {
+            self.path.compute_root(commitment)
+        };
+
         ConsumedInstance {
             nullifier: self.resource.nullify(&self.nullifier_key).unwrap(),
-            root: self.path.compute_root(commitment),
+            root,
             logic_ref: self.resource.logic_ref,
         }
     }
