@@ -5,6 +5,11 @@
 
 use alloc::vec::Vec;
 
+use digest::{
+    FixedOutput, HashMarker, Output, OutputSizeUser, Update,
+    consts::{U32, U64},
+    core_api::BlockSizeUser,
+};
 use elliptic_curve::hash2curve::{ExpandMsg, ExpandMsgXmd, Expander};
 use openvm_algebra_guest::{Field, IntMod, Reduce};
 use openvm_ecc_guest::weierstrass::WeierstrassPoint;
@@ -298,7 +303,8 @@ fn isogeny(rx: ScalarPoint, ry: ScalarPoint) -> (ScalarPoint, ScalarPoint) {
 fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<ScalarPoint> {
     let len_in_bytes = count * 48;
     let dsts: &[&[u8]] = &[dst];
-    let mut expander = ExpandMsgXmd::<Sha256>::expand_message(&[msg], dsts, len_in_bytes).unwrap();
+    let mut expander =
+        ExpandMsgXmd::<OpenVMSha256>::expand_message(&[msg], dsts, len_in_bytes).unwrap();
 
     let mut result = Vec::with_capacity(count);
     let mut chunk = [0u8; 48];
@@ -311,4 +317,29 @@ fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<ScalarPoint> {
         result.push(ScalarPoint::reduce_be_bytes(&padded));
     }
     result
+}
+
+#[derive(Default)]
+struct OpenVMSha256(Sha256);
+
+impl HashMarker for OpenVMSha256 {}
+
+impl BlockSizeUser for OpenVMSha256 {
+    type BlockSize = U64;
+}
+
+impl OutputSizeUser for OpenVMSha256 {
+    type OutputSize = U32;
+}
+
+impl Update for OpenVMSha256 {
+    fn update(&mut self, data: &[u8]) {
+        <Sha256 as Update>::update(&mut self.0, data);
+    }
+}
+
+impl FixedOutput for OpenVMSha256 {
+    fn finalize_into(self, out: &mut Output<Self>) {
+        <Sha256 as FixedOutput>::finalize_into(self.0, out);
+    }
 }
