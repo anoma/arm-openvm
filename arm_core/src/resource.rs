@@ -3,9 +3,14 @@
 //! A trivial implementation of the resource interface
 //! Posesses trivial randomness
 
-use crate::{hash::keccak256, nullifier_key::NullifierKey};
+use crate::{
+    hash::keccak256,
+    hash_to_curve::{DST, hash_from_bytes},
+    nullifier_key::NullifierKey,
+};
 use alloc::vec::Vec;
 use arm_traits::{nullifier_key::RMNullifierKey, resource::Resource as ResourceTrait};
+use openvm_k256::Secp256k1Point;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Resource {
@@ -52,7 +57,7 @@ impl ResourceTrait<NullifierKey> for Resource {
     type RValueRef = [u8; 32];
     type RQuantity = u128;
     type RNonce = [u8; 32];
-    type RKind = [u8; 32];
+    type RKind = Secp256k1Point;
     type RRandSeed = ();
     type RCommitment = [u8; 32];
     type RNullifier = [u8; 32];
@@ -97,7 +102,7 @@ impl ResourceTrait<NullifierKey> for Resource {
         let mut bytes = [0u8; 64];
         bytes[..32].copy_from_slice(logic_ref);
         bytes[32..].copy_from_slice(label_ref);
-        keccak256(&bytes)
+        hash_from_bytes(&bytes, DST)
     }
 
     fn compute_nullifier(&self, nk: &NullifierKey) -> Self::RNullifier {
