@@ -13,12 +13,14 @@ use alloc::vec::Vec;
 // use openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config;
 
 /// A payload struct encoding a blob and indexing information.
+#[derive(Default)]
 pub struct Payload {
     pub data: Vec<u8>,
     pub deletion_criterion: bool,
 }
 
 /// Appdata struct encoding different kinds of payloads.
+#[derive(Default)]
 pub struct AppData {
     pub resource_payload: Vec<Payload>,
     pub encryption_payload: Vec<Payload>,
@@ -32,8 +34,16 @@ pub struct ResourceInstanceData {
     pub tag: [u8; 32],
     // this corresponds to the exe_commit
     pub logic_ref: [u8; 32],
-    pub appdata: AppData,
+    pub app_data: AppData,
     pub logic_proof: Vec<u8>,
+}
+
+/// Resource Logic Insance returned by any custom guest program
+pub struct ResourceLogicInstance {
+    pub tag: [u8; 32],
+    pub action_root: [u8; 32],
+    pub is_consumed: bool,
+    pub app_data: AppData,
 }
 
 /// A type implementing both compliance unit and action interfaces
@@ -76,7 +86,7 @@ impl InstanceDataUnit {
 pub struct ResourceAggregationInstance {
     pub tag: [u8; 32],
     pub logic_ref: [u8; 32],
-    pub appdata: AppData,
+    pub app_data: AppData,
 }
 
 /// The action-specific output of the aggregation guest program
