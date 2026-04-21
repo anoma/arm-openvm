@@ -4,3 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+arm_core = { path = "../arm_core", default-features = false }
+arm_traits = { path = "../arm_traits", default-features = false }
+openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v2.0.0-beta.2", default-features = false }
+openvm-sdk = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+openvm-circuit = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+eyre = "0.6"
+
+[[bin]]
+name = "bench-compliance"
+path = "src/bin/bench_compliance.rs"
