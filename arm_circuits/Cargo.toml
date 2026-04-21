@@ -12,6 +12,10 @@ openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.
 openvm-circuit = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
 eyre = "0.6"
 
+[features]
+default = []
+cuda = ["openvm-sdk/cuda", "openvm-circuit/cuda"]
+
 [[bin]]
 name = "bench-compliance"
 path = "src/bin/bench_compliance.rs"
