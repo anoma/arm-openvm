@@ -35,7 +35,7 @@ pub struct DeltaInstance {
 }
 
 #[derive(Debug)]
-enum DeltaError {
+pub enum DeltaError {
     DeltaProofGenerationFailed,
     InvalidDeltaProof,
     DeltaProofVerificationFailed,

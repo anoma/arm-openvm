@@ -24,6 +24,7 @@ pub struct Resource {
 }
 
 impl Resource {
+    #[allow(dead_code)]
     fn to_vec(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(32 * 5 + 16 + 1);
         bytes.extend_from_slice(&self.logic_ref);
