@@ -35,7 +35,7 @@ impl Resource {
         bytes.extend_from_slice(&self.nonce);
         bytes.extend_from_slice(&self.nk_commitment);
         bytes.push(self.is_ephemeral as u8);
-        return bytes;
+        bytes
     }
 
     fn to_bytes(&self) -> [u8; 177] {
@@ -48,7 +48,7 @@ impl Resource {
         bytes[112..144].copy_from_slice(&self.nonce);
         bytes[144..176].copy_from_slice(&self.nk_commitment);
         bytes[176] = self.is_ephemeral as u8;
-        return bytes;
+        bytes
     }
 }
 

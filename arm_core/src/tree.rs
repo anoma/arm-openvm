@@ -52,9 +52,10 @@ impl SparseTree {
         // leaves are the nodes at height 0
         nodes.push(leaves.to_vec());
 
+        #[allow(clippy::needless_range_loop)]
         for depth_index in 0..depth {
             // the parents to compute are exactly twice as small as the children
-            let next_level_capacity = (nodes[depth_index].len() + 1) / 2;
+            let next_level_capacity = nodes[depth_index].len().div_ceil(2);
             let mut nodes_at_next_level: Vec<[u8; 32]> = Vec::with_capacity(next_level_capacity);
             for parent_index in 0..next_level_capacity {
                 // either get the sibling, or the default node
@@ -93,6 +94,7 @@ impl SparseTree {
         let empty_nodes = empty_nodes(depth);
         let mut path: Vec<Sibling> = Vec::with_capacity(depth);
 
+        #[allow(clippy::needless_range_loop)]
         for level in 0..depth {
             // the index of the sibling is just a bit-flip away
             let sibling_index = index ^ 1;
