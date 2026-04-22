@@ -3,6 +3,15 @@
 //! A PROTOTYPE implementation of the voting guest program
 //! Hardcoded consts have to be treated per-application currently
 //! and placed as mocks currently
+//!
+//! The flow is currently approximately:
+//! - somehow a tree of voters is decided with each pk unique to the tree
+//! - for mint one needs to show that they have a path at the root + authorization
+//! - for burn, two EC points are sent to be accumulated on-chain
+//!
+//! Supposed to be extensible in terms of:
+//! - how voting body is decided and what weight it has
+//! - how the decoder is selected (trivially known sk or threshold)
 
 use crate::{
     error::ArmError,
