@@ -13,3 +13,4 @@ pub mod instance;
 pub mod nullifier_key;
 pub mod resource;
 pub mod tree;
+pub mod voting;
