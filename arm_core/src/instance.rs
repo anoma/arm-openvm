@@ -64,7 +64,8 @@ impl InstanceDataUnit {
                 .iter()
                 .map(|x| CreatedInstance {
                     commitment: x.tag,
-                    logic_ref: x.logic_ref,
+                    outer_logic_ref: x.logic_ref,
+                    app_data: x.app_data.clone(),
                 })
                 .collect(),
             consumed: self
@@ -73,7 +74,8 @@ impl InstanceDataUnit {
                 .map(|x| ConsumedInstance {
                     nullifier: x.tag,
                     root: self.root,
-                    logic_ref: x.logic_ref,
+                    outer_logic_ref: x.logic_ref,
+                    app_data: x.app_data.clone(),
                 })
                 .collect(),
             delta_x: self.delta_x,

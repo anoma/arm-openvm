@@ -3,7 +3,8 @@
 //! A trivial implementation of the complaince interface
 
 use crate::{
-    error::ArmError, hash::keccak256, nullifier_key::NullifierKey, resource::Resource, tree::Proof,
+    error::ArmError, hash::keccak256, instance::AppData, nullifier_key::NullifierKey,
+    resource::Resource, tree::Proof as MerkleProof,
 };
 use alloc::vec::Vec;
 use arm_traits::resource::Resource as ResourceTrait;
@@ -11,35 +12,52 @@ use openvm_algebra_guest::Reduce;
 use openvm_ecc_guest::{CyclicGroup, weierstrass::WeierstrassPoint};
 use openvm_k256::{Secp256k1Point as CurvePoint, Secp256k1Scalar as Scalar};
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+type LogicProof = Vec<u8>;
+
 pub struct ConsumedWitness {
     pub resource: Resource,
     pub nullifier_key: NullifierKey,
-    pub path: Proof,
+    pub path: MerkleProof,
     pub delta_extra_input: [u8; 32],
+    // these fields are added for wrapping
+    pub logic_hiding_input: [u8; 32],
+    pub app_data: AppData,
+    pub logic_proof: LogicProof,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CreatedWitness {
     pub resource: Resource,
     pub delta_extra_input: [u8; 32],
+    // these fields are added for wrapping
+    pub logic_hiding_input: [u8; 32],
+    pub app_data: AppData,
+    pub logic_proof: LogicProof,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ComplianceWitness {
     pub consumed: Vec<ConsumedWitness>,
     pub created: Vec<CreatedWitness>,
+    // these fields are added for wrapping
+    pub action_root: [u8; 32],
 }
 
+/// Currently inefficiently inflates write size
+/// by attaching the action tree everywhere
 pub struct ConsumedInstance {
     pub nullifier: [u8; 32],
     pub root: [u8; 32],
-    pub logic_ref: [u8; 32],
+    pub outer_logic_ref: [u8; 32],
+    // these fields are added for wrapping
+    pub app_data: AppData,
 }
 
+/// Currently inefficiently inflates write size
+/// by attaching the action tree everywhere
 pub struct CreatedInstance {
     pub commitment: [u8; 32],
-    pub logic_ref: [u8; 32],
+    pub outer_logic_ref: [u8; 32],
+    // these fields are added for wrapping
+    pub app_data: AppData,
 }
 
 pub struct ComplianceInstance {
@@ -50,7 +68,7 @@ pub struct ComplianceInstance {
 }
 
 impl ConsumedWitness {
-    pub fn constrain(&self) -> ConsumedInstance {
+    pub fn constrain(&self, action_root: [u8; 32]) -> ConsumedInstance {
         let commitment = self.resource.commit();
 
         let root = if self.resource.is_ephemeral {
@@ -59,21 +77,79 @@ impl ConsumedWitness {
             self.path.compute_root(commitment)
         };
 
+        let nullifier = self.resource.nullify(&self.nullifier_key).unwrap();
+
+        // make sure logic instance and compliance witness data corresponds
+        // and return the encoded logic reference
+        let outer_logic_ref = process_logic_instance(
+            nullifier,
+            true,
+            self.resource.logic_ref,
+            &self.app_data,
+            &self.logic_proof,
+            action_root,
+            self.logic_hiding_input,
+        );
+
+        // return the logic instance, binding to it, as well as the root
+        // against which we are consuming and the outer hash of the
+        // guestID
         ConsumedInstance {
-            nullifier: self.resource.nullify(&self.nullifier_key).unwrap(),
+            nullifier,
             root,
-            logic_ref: self.resource.logic_ref,
+            outer_logic_ref,
+            app_data: self.app_data.clone(),
         }
     }
 }
 
 impl CreatedWitness {
-    pub fn constrain(&self) -> CreatedInstance {
+    pub fn constrain(&self, action_root: [u8; 32]) -> CreatedInstance {
+        let commitment = self.resource.commit();
+
+        // make sure logic instance and compliance witness data corresponds
+        // and return the encoded logic reference
+        let outer_logic_ref = process_logic_instance(
+            commitment,
+            false,
+            self.resource.logic_ref,
+            &self.app_data,
+            &self.logic_proof,
+            action_root,
+            self.logic_hiding_input,
+        );
+
+        // return the logic instance, binding it, as well as the outer
+        // hash of the guestID
         CreatedInstance {
-            commitment: self.resource.commit(),
-            logic_ref: self.resource.logic_ref,
+            commitment,
+            outer_logic_ref,
+            app_data: self.app_data.clone(),
         }
     }
+}
+
+fn process_logic_instance(
+    tag: [u8; 32],
+    is_consumed: bool,
+    logic_ref: [u8; 32],
+    app_data: &AppData,
+    proof: &LogicProof,
+    action_root: [u8; 32],
+    randomness: [u8; 32],
+) -> [u8; 32] {
+    // verify the logic proof
+    todo!(
+        "verify(vk: logic_ref, instance: (tag, is_consumed: action_root, app_data), proof: proof)"
+    );
+
+    // concatenate the logic reference and randomness bytes
+    // as the plaintext to the outer hash
+    let mut bytes = [0u8; 64];
+    bytes[..32].copy_from_slice(&logic_ref);
+    bytes[32..].copy_from_slice(&randomness);
+
+    keccak256(&bytes)
 }
 
 impl ComplianceWitness {
@@ -85,7 +161,7 @@ impl ComplianceWitness {
             .iter()
             .map(|x| {
                 delta -= to_delta(&x.resource, x.delta_extra_input);
-                x.constrain()
+                x.constrain(self.action_root)
             })
             .collect();
         let mut nullifiers: Vec<[u8; 32]> =
@@ -112,10 +188,7 @@ impl ComplianceWitness {
                 return Err(ArmError::ComplianceProofCreatedResourceNonceMismatch);
             }
 
-            created_instances.push(CreatedInstance {
-                commitment: witness.resource.commit(),
-                logic_ref: witness.resource.logic_ref,
-            })
+            created_instances.push(witness.constrain(self.action_root))
         }
 
         Ok(ComplianceInstance {
