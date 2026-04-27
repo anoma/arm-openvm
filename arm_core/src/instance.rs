@@ -13,14 +13,14 @@ use alloc::vec::Vec;
 // use openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config;
 
 /// A payload struct encoding a blob and indexing information.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Payload {
     pub data: Vec<u8>,
     pub deletion_criterion: bool,
 }
 
 /// Appdata struct encoding different kinds of payloads.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct AppData {
     pub resource_payload: Vec<Payload>,
     pub encryption_payload: Vec<Payload>,
@@ -64,7 +64,8 @@ impl InstanceDataUnit {
                 .iter()
                 .map(|x| CreatedInstance {
                     commitment: x.tag,
-                    logic_ref: x.logic_ref,
+                    outer_logic_ref: x.logic_ref,
+                    app_data: x.app_data.clone(),
                 })
                 .collect(),
             consumed: self
@@ -73,7 +74,8 @@ impl InstanceDataUnit {
                 .map(|x| ConsumedInstance {
                     nullifier: x.tag,
                     root: self.root,
-                    logic_ref: x.logic_ref,
+                    outer_logic_ref: x.logic_ref,
+                    app_data: x.app_data.clone(),
                 })
                 .collect(),
             delta_x: self.delta_x,
