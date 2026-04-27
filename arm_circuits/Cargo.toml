@@ -12,11 +12,20 @@ openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", ta
 openvm-sdk = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
 openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
 openvm-circuit = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+# deferral / verify-stark plumbing for end-to-end inner-proof verification
+openvm-deferral-circuit = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+openvm-verify-stark-circuit = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
 eyre = "0.6"
 
 [features]
 default = []
-cuda = ["openvm-sdk/cuda", "openvm-circuit/cuda"]
+cuda = [
+    "openvm-sdk/cuda",
+    "openvm-circuit/cuda",
+    "openvm-deferral-circuit/cuda",
+    "openvm-verify-stark-circuit/cuda",
+]
 
 [[bin]]
 name = "bench-compliance"
