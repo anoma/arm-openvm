@@ -1,0 +1,27 @@
+[workspace]
+
+[package]
+name = "trivial-logic-guest"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+openvm-build = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+
+[dependencies]
+openvm = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2", features = ["std"]}
+arm_core = { path = "../../arm_core", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+
+# for writing instance data
+alloy-sol-types = { version = "0.8", default-features = false }
+
+# unneeded but currently matching extension set
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
+openvm-k256 = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2", package = "k256" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

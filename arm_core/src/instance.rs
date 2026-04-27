@@ -13,14 +13,14 @@ use alloc::vec::Vec;
 // use openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config;
 
 /// A payload struct encoding a blob and indexing information.
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Payload {
     pub data: Vec<u8>,
     pub deletion_criterion: bool,
 }
 
 /// Appdata struct encoding different kinds of payloads.
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct AppData {
     pub resource_payload: Vec<Payload>,
     pub encryption_payload: Vec<Payload>,
@@ -39,6 +39,7 @@ pub struct ResourceInstanceData {
 }
 
 /// Resource Logic Insance returned by any custom guest program
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct ResourceLogicInstance {
     pub tag: [u8; 32],
     pub action_root: [u8; 32],
