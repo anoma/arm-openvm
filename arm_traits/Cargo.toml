@@ -1,6 +1,8 @@
 [package]
 name = "arm_traits"
 version = "0.1.0"
-edition = "2024"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]

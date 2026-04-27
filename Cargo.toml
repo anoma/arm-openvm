@@ -2,3 +2,8 @@
 members = ["arm_traits", "arm_core", "arm_circuits",]
 exclude = ["arm_circuits/compliance"]
 resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/anoma/arm-openvm"

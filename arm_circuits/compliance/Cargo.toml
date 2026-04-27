@@ -4,6 +4,8 @@
 name = "compliance-guest"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/anoma/arm-openvm"
 
 [build-dependencies]
 openvm-build = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
