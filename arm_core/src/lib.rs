@@ -11,5 +11,6 @@ pub mod hash_to_curve;
 #[allow(dead_code)]
 pub mod instance;
 pub mod nullifier_key;
+pub mod proving;
 pub mod resource;
 pub mod tree;
