@@ -5,22 +5,24 @@
 //!
 //! Implemented for efficiency in size and computation.
 
-use crate::compliance::{ComplianceInstance, ConsumedInstance, CreatedInstance};
+use crate::{
+    error::ArmError,
+    proving::{DEF_IDX, VM_COMMIT},
+};
 use alloc::vec::Vec;
-//use k256::ecdsa::{RecoveryId, Signature};
-// Enable later to support inidivdual proofs
-// use openvm_circuit::arch::ContinuationVmProof;
-// use openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config;
+use openvm_verify_stark_guest::verify_stark_unchecked;
+
+pub type Proof = Vec<u8>;
 
 /// A payload struct encoding a blob and indexing information.
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Payload {
     pub data: Vec<u8>,
     pub deletion_criterion: bool,
 }
 
 /// Appdata struct encoding different kinds of payloads.
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AppData {
     pub resource_payload: Vec<Payload>,
     pub encryption_payload: Vec<Payload>,
@@ -28,14 +30,21 @@ pub struct AppData {
     pub discovery_payload: Vec<Payload>,
 }
 
-/// Instance data associated with a specific resource tag
-/// Currently can be used for both consumed and created resources
-pub struct ResourceInstanceData {
-    pub tag: [u8; 32],
-    // this corresponds to the exe_commit
-    pub logic_ref: [u8; 32],
+/// Instance returned by the compliance program for each consumed resource
+pub struct ConsumedInstance {
+    pub nullifier: [u8; 32],
+    pub root: [u8; 32],
+    pub outer_logic_ref: [u8; 32],
+    // these fields are added for wrapping
     pub app_data: AppData,
-    pub logic_proof: Vec<u8>,
+}
+
+/// Instance returned by the compliance program for each created resource
+pub struct CreatedInstance {
+    pub commitment: [u8; 32],
+    pub outer_logic_ref: [u8; 32],
+    // these fields are added for wrapping
+    pub app_data: AppData,
 }
 
 /// Resource Logic Insance returned by any custom guest program
@@ -47,56 +56,30 @@ pub struct ResourceLogicInstance {
     pub app_data: AppData,
 }
 
-/// A type implementing both compliance unit and action interfaces
-pub struct InstanceDataUnit {
-    created: Vec<ResourceInstanceData>,
-    consumed: Vec<ResourceInstanceData>,
-    delta_x: [u8; 32],
-    delta_y: [u8; 32],
-    root: [u8; 32],
-    compliance_proof: Vec<u8>,
-}
+impl ResourceLogicInstance {
+    pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> Result<(), ArmError> {
+        let journal = verify_stark_unchecked::<DEF_IDX>(&proof_commit);
 
-impl InstanceDataUnit {
-    pub fn to_compliance_instance(&self) -> ComplianceInstance {
-        ComplianceInstance {
-            created: self
-                .created
-                .iter()
-                .map(|x| CreatedInstance {
-                    commitment: x.tag,
-                    logic_ref: x.logic_ref,
-                })
-                .collect(),
-            consumed: self
-                .consumed
-                .iter()
-                .map(|x| ConsumedInstance {
-                    nullifier: x.tag,
-                    root: self.root,
-                    logic_ref: x.logic_ref,
-                })
-                .collect(),
-            delta_x: self.delta_x,
-            delta_y: self.delta_y,
+        if journal.app_exe_commit != logic_ref || journal.app_vm_commit != VM_COMMIT {
+            return Err(ArmError::GeneralError);
         }
+
+        todo!("check instance bytes against the user_public_values")
     }
 }
 
-/// The resource-specific output of the aggregation guest program
-pub struct ResourceAggregationInstance {
-    pub tag: [u8; 32],
-    pub logic_ref: [u8; 32],
-    pub app_data: AppData,
+/// A type implementing both compliance unit and action interfaces
+pub struct ActionInstance {
+    pub consumed: Vec<ConsumedInstance>,
+    pub created: Vec<CreatedInstance>,
+    pub delta_x: [u8; 32],
+    pub delta_y: [u8; 32],
 }
 
-/// The action-specific output of the aggregation guest program
-pub struct AggregationInstanceDataUnit {
-    created: Vec<ResourceInstanceData>,
-    consumed: Vec<ResourceInstanceData>,
-    root: [u8; 32],
-    delta_x: [u8; 32],
-    delta_y: [u8; 32],
+/// A type implementing both compliance unit and action interfaces
+pub struct ActionVerifierInput {
+    pub action_instance: ActionInstance,
+    pub compliance_proof: Proof,
 }
 
 /// An RM transaction datatype
@@ -105,7 +88,7 @@ pub struct Transaction {
     // Since we have variable-sized proofs, we can assume that
     // each each action corresponds to exactly one compliance unit
     // in this implementation
-    units: Vec<InstanceDataUnit>,
+    units: Vec<(ActionInstance, Proof)>,
     delta_proof: [u8; 65],
     aggregation_proof: Vec<u8>,
 }
