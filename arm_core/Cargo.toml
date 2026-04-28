@@ -13,6 +13,8 @@ digest = { version = "0.10", default-features = false }
 # openvm host dependencies
 # openvm-circuit = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.0-beta.1" }
 # openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v2.0.0-beta.1" }
+#proof-deferral dependency
+openvm-verify-stark-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.0-beta.2"}
 #sha2 dependencies
 openvm-sha2 = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.0-beta.2"}
 #keccak dependencies
