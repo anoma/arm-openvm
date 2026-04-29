@@ -7,7 +7,7 @@
 
 use crate::{
     error::ArmError,
-    proving::{DEF_IDX, VM_COMMIT},
+    proving::{DEF_IDX, LOGIC_VM_COMMIT},
 };
 use alloc::vec::Vec;
 use openvm_verify_stark_guest::verify_stark_unchecked;
@@ -60,7 +60,7 @@ impl ResourceLogicInstance {
     pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> Result<(), ArmError> {
         let journal = verify_stark_unchecked::<DEF_IDX>(&proof_commit);
 
-        if journal.app_exe_commit != logic_ref || journal.app_vm_commit != VM_COMMIT {
+        if journal.app_exe_commit != logic_ref || journal.app_vm_commit != LOGIC_VM_COMMIT {
             return Err(ArmError::GeneralError);
         }
 
