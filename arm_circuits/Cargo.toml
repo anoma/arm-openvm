@@ -30,3 +30,7 @@ cuda = [
 [[bin]]
 name = "bench-compliance"
 path = "src/bin/bench_compliance.rs"
+
+[[bin]]
+name = "bench-trivial-logic"
+path = "src/bin/bench_trivial.rs"
