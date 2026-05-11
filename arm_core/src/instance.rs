@@ -126,7 +126,7 @@ impl ResourceLogicInstance {
     }
 
     pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> () {
-        // we assume each proof is a keccak of the abi encoding of the specified instance
+        // we assume each proof output is a keccak of the abi encoding of the specified instance
         let guest_output = keccak256(&self.to_sol().abi_encode());
         // TODO! Double check that each byte is cast into a word
         let revealed_bytes: Vec<u8> = guest_output.iter().flat_map(|&b| [b, 0, 0, 0]).collect();
