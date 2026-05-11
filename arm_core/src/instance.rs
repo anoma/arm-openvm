@@ -6,12 +6,12 @@
 //! Implemented for efficiency in size and computation.
 
 use crate::{
-    error::ArmError,
+    hash::keccak256,
     proving::{DEF_IDX, LOGIC_VM_COMMIT},
 };
 use alloc::vec::Vec;
-use alloy_sol_types::sol;
-use openvm_verify_stark_guest::verify_stark_unchecked;
+use alloy_sol_types::{SolValue, sol};
+use openvm_verify_stark_guest::{ProofOutput, verify_stark};
 
 pub type Proof = Vec<u8>;
 
@@ -125,14 +125,18 @@ impl ResourceLogicInstance {
         }
     }
 
-    pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> Result<(), ArmError> {
-        let journal = verify_stark_unchecked::<DEF_IDX>(&proof_commit);
-
-        if journal.app_exe_commit != logic_ref || journal.app_vm_commit != LOGIC_VM_COMMIT {
-            return Err(ArmError::GeneralError);
-        }
-
-        todo!("check instance bytes against the user_public_values")
+    pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> () {
+        // we assume each proof is a keccak of the abi encoding of the specified instance
+        let guest_output = keccak256(&self.to_sol().abi_encode());
+        // TODO! Double check that each byte is cast into a word
+        let revealed_bytes: Vec<u8> = guest_output.iter().flat_map(|&b| [b, 0, 0, 0]).collect();
+        let expected_output = ProofOutput {
+            app_exe_commit: logic_ref,
+            app_vm_commit: LOGIC_VM_COMMIT,
+            user_public_values: revealed_bytes,
+        };
+        // WARNING: this panics pm failure
+        verify_stark::<DEF_IDX>(&proof_commit, &expected_output);
     }
 }
 
