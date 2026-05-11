@@ -10,6 +10,7 @@ use crate::{
     proving::{DEF_IDX, LOGIC_VM_COMMIT},
 };
 use alloc::vec::Vec;
+use alloy_sol_types::sol;
 use openvm_verify_stark_guest::verify_stark_unchecked;
 
 pub type Proof = Vec<u8>;
@@ -47,6 +48,64 @@ pub struct CreatedInstance {
     pub app_data: AppData,
 }
 
+// ABI representations of the instance data for EVM chains
+sol! {
+    struct SolPayload {
+        bytes data;
+        bool deletionCriterion;
+    }
+
+    struct SolAppData {
+        SolPayload[] resourcePayload;
+        SolPayload[] encryptionPayload;
+        SolPayload[] externalPayload;
+        SolPayload[] discoveryPayload;
+    }
+
+    struct SolLogicInstance {
+        bytes32 tag;
+        bytes32 actionRoot;
+        bool isConsumed;
+        SolAppData appData;
+    }
+}
+
+impl Payload {
+    pub fn to_sol(&self) -> SolPayload {
+        SolPayload {
+            data: self.data.clone().into(),
+            deletionCriterion: self.deletion_criterion,
+        }
+    }
+}
+
+impl AppData {
+    pub fn to_sol(&self) -> SolAppData {
+        SolAppData {
+            resourcePayload: self
+                .resource_payload
+                .iter()
+                .map(|payload| payload.to_sol())
+                .collect(),
+            encryptionPayload: self
+                .encryption_payload
+                .iter()
+                .map(|payload| payload.to_sol())
+                .collect(),
+            externalPayload: self
+                .external_payload
+                .iter()
+                .map(|payload| payload.to_sol())
+                .collect(),
+            discoveryPayload: self
+                .discovery_payload
+                .iter()
+                .map(|payload| payload.to_sol())
+                .collect(),
+        }
+    }
+}
+
 /// Resource Logic Insance returned by any custom guest program
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct ResourceLogicInstance {
@@ -57,6 +116,15 @@ pub struct ResourceLogicInstance {
 }
 
 impl ResourceLogicInstance {
+    pub fn to_sol(&self) -> SolLogicInstance {
+        SolLogicInstance {
+            tag: self.tag.into(),
+            actionRoot: self.action_root.into(),
+            isConsumed: self.is_consumed,
+            appData: self.app_data.to_sol(),
+        }
+    }
+
     pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> Result<(), ArmError> {
         let journal = verify_stark_unchecked::<DEF_IDX>(&proof_commit);
 
