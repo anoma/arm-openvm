@@ -14,3 +14,4 @@ pub mod nullifier_key;
 pub mod proving;
 pub mod resource;
 pub mod tree;
+pub mod voting;
