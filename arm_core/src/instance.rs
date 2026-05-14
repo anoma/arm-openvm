@@ -48,7 +48,7 @@ pub struct CreatedInstance {
     pub app_data: AppData,
 }
 
-/// A type implementing both compliance unit and action interfaces
+/// A type implementing both compliance instance and action interfaces
 pub struct ActionInstance {
     pub consumed: Vec<ConsumedInstance>,
     pub created: Vec<CreatedInstance>,
@@ -93,6 +93,26 @@ sol! {
         bool isConsumed;
         SolAppData appData;
     }
+
+    struct SolConsumedInstance {
+        bytes32 nullifier;
+        bytes32 root;
+        bytes32 outerLogicRef;
+        SolAppData appData;
+    }
+
+    struct SolCreatedInstance {
+        bytes32 commitment;
+        bytes32 outerLogicRef;
+        SolAppData appData;
+    }
+
+    struct SolActionInstance {
+        SolConsumedInstance[] consumed;
+        SolCreatedInstance[] created;
+        bytes32 deltaX;
+        bytes32 deltaY;
+    }
 }
 
 impl Payload {
@@ -127,6 +147,38 @@ impl AppData {
                 .iter()
                 .map(|payload| payload.to_sol())
                 .collect(),
+        }
+    }
+}
+
+impl ConsumedInstance {
+    pub fn to_sol(&self) -> SolConsumedInstance {
+        SolConsumedInstance {
+            nullifier: self.nullifier.into(),
+            root: self.root.into(),
+            outerLogicRef: self.outer_logic_ref.into(),
+            appData: self.app_data.to_sol(),
+        }
+    }
+}
+
+impl CreatedInstance {
+    pub fn to_sol(&self) -> SolCreatedInstance {
+        SolCreatedInstance {
+            commitment: self.commitment.into(),
+            outerLogicRef: self.outer_logic_ref.into(),
+            appData: self.app_data.to_sol(),
+        }
+    }
+}
+
+impl ActionInstance {
+    pub fn to_sol(&self) -> SolActionInstance {
+        SolActionInstance {
+            consumed: self.consumed.iter().map(ConsumedInstance::to_sol).collect(),
+            created: self.created.iter().map(CreatedInstance::to_sol).collect(),
+            deltaX: self.delta_x.into(),
+            deltaY: self.delta_y.into(),
         }
     }
 }
