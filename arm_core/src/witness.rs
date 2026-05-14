@@ -20,6 +20,7 @@ use openvm_k256::{Secp256k1Point as CurvePoint, Secp256k1Scalar as Scalar};
 /// The commitment to the proof used via deferrals
 type LogicProofCommitment = [u8; 32];
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ConsumedWitness {
     pub resource: Resource,
     pub nullifier_key: NullifierKey,
@@ -31,6 +32,7 @@ pub struct ConsumedWitness {
     pub logic_proof: LogicProofCommitment,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct CreatedWitness {
     pub resource: Resource,
     pub delta_extra_input: [u8; 32],
@@ -40,6 +42,7 @@ pub struct CreatedWitness {
     pub logic_proof: LogicProofCommitment,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ComplianceWitness {
     pub consumed: Vec<ConsumedWitness>,
     pub created: Vec<CreatedWitness>,
