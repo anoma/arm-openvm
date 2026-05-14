@@ -20,7 +20,7 @@ use p3_field::PrimeField32;
 // Copied from openvm `verify-stark/circuit/src/extension.rs` (private upstream)
 // this is specifically for deferral in-guest verification
 // on-chain has its own standard CommitBytes::from
-fn f_slice_to_bytes(slice: &[F]) -> Vec<u8> {
+pub fn f_slice_to_bytes(slice: &[F]) -> Vec<u8> {
     let mut output = Vec::with_capacity(size_of_val(slice));
     for value in slice {
         let bytes = value.as_canonical_u32().to_le_bytes();
