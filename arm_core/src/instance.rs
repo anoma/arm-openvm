@@ -48,6 +48,31 @@ pub struct CreatedInstance {
     pub app_data: AppData,
 }
 
+/// A type implementing both compliance unit and action interfaces
+pub struct ActionInstance {
+    pub consumed: Vec<ConsumedInstance>,
+    pub created: Vec<CreatedInstance>,
+    pub delta_x: [u8; 32],
+    pub delta_y: [u8; 32],
+}
+
+/// A type implementing both compliance unit and action interfaces
+pub struct ActionVerifierInput {
+    pub action_instance: ActionInstance,
+    pub compliance_proof: Proof,
+}
+
+/// An RM transaction datatype
+/// Assumes one compliance unit per action
+pub struct Transaction {
+    // Since we have variable-sized proofs, we can assume that
+    // each each action corresponds to exactly one compliance unit
+    // in this implementation
+    units: Vec<(ActionInstance, Proof)>,
+    delta_proof: [u8; 65],
+    aggregation_proof: Vec<u8>,
+}
+
 // ABI representations of the instance data for EVM chains
 sol! {
     struct SolPayload {
@@ -138,29 +163,4 @@ impl ResourceLogicInstance {
         // WARNING: this panics pm failure
         verify_stark::<DEF_IDX>(&proof_commit, &expected_output);
     }
-}
-
-/// A type implementing both compliance unit and action interfaces
-pub struct ActionInstance {
-    pub consumed: Vec<ConsumedInstance>,
-    pub created: Vec<CreatedInstance>,
-    pub delta_x: [u8; 32],
-    pub delta_y: [u8; 32],
-}
-
-/// A type implementing both compliance unit and action interfaces
-pub struct ActionVerifierInput {
-    pub action_instance: ActionInstance,
-    pub compliance_proof: Proof,
-}
-
-/// An RM transaction datatype
-/// Assumes one compliance unit per action
-pub struct Transaction {
-    // Since we have variable-sized proofs, we can assume that
-    // each each action corresponds to exactly one compliance unit
-    // in this implementation
-    units: Vec<(ActionInstance, Proof)>,
-    delta_proof: [u8; 65],
-    aggregation_proof: Vec<u8>,
 }
