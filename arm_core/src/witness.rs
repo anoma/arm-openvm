@@ -51,7 +51,7 @@ pub struct ComplianceWitness {
 }
 
 impl ConsumedWitness {
-    pub fn constrain(&self, action_root: [u8; 32]) -> Result<ConsumedInstance, ArmError> {
+    pub fn constrain(&self, action_root: [u8; 32]) -> ConsumedInstance {
         let commitment = self.resource.commit();
 
         let root = if self.resource.is_ephemeral {
@@ -72,22 +72,22 @@ impl ConsumedWitness {
             self.logic_proof,
             action_root,
             self.logic_hiding_input,
-        )?;
+        );
 
         // return the logic instance, binding to it, as well as the root
         // against which we are consuming and the outer hash of the
         // guestID
-        Ok(ConsumedInstance {
+        ConsumedInstance {
             nullifier,
             root,
             outer_logic_ref,
             app_data: self.app_data.clone(),
-        })
+        }
     }
 }
 
 impl CreatedWitness {
-    pub fn constrain(&self, action_root: [u8; 32]) -> Result<CreatedInstance, ArmError> {
+    pub fn constrain(&self, action_root: [u8; 32]) -> CreatedInstance {
         let commitment = self.resource.commit();
 
         // make sure logic instance and compliance witness data corresponds
@@ -100,15 +100,15 @@ impl CreatedWitness {
             self.logic_proof,
             action_root,
             self.logic_hiding_input,
-        )?;
+        );
 
         // return the logic instance, binding it, as well as the outer
         // hash of the guestID
-        Ok(CreatedInstance {
+        CreatedInstance {
             commitment,
             outer_logic_ref,
             app_data: self.app_data.clone(),
-        })
+        }
     }
 }
 
@@ -120,7 +120,7 @@ fn process_logic_instance(
     proof: LogicProofCommitment,
     action_root: [u8; 32],
     randomness: [u8; 32],
-) -> Result<[u8; 32], ArmError> {
+) -> [u8; 32] {
     // verify the logic proof
     let logic_instance = ResourceLogicInstance {
         tag,
@@ -137,7 +137,7 @@ fn process_logic_instance(
     bytes[..32].copy_from_slice(&logic_ref);
     bytes[32..].copy_from_slice(&randomness);
 
-    Ok(keccak256(&bytes))
+    keccak256(&bytes)
 }
 
 impl ComplianceWitness {
@@ -151,7 +151,7 @@ impl ComplianceWitness {
                 delta -= to_delta(&x.resource, x.delta_extra_input);
                 x.constrain(self.action_root)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect();
         let mut nullifiers: Vec<[u8; 32]> =
             consumed_instances.iter().map(|x| x.nullifier).collect();
         let length = nullifiers.len();
@@ -176,7 +176,7 @@ impl ComplianceWitness {
                 return Err(ArmError::ComplianceProofCreatedResourceNonceMismatch);
             }
 
-            created_instances.push(witness.constrain(self.action_root)?)
+            created_instances.push(witness.constrain(self.action_root))
         }
 
         Ok(ActionInstance {
