@@ -6,9 +6,9 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-openvm-sdk = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
-openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
-openvm-recursion-circuit = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
+openvm-sdk = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-recursion-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false , features = ["parallel"]}
 p3-field = "0.4.1"
 eyre = "0.6"

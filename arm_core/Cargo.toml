@@ -16,15 +16,15 @@ alloy-sol-types = { version = "0.8", default-features = false }
 # openvm-circuit = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.0-beta.1" }
 # openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v2.0.0-beta.1" }
 #proof-deferral dependency
-openvm-verify-stark-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "a8262d0"}
+openvm-verify-stark-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe"}
 #sha2 dependencies
-openvm-sha2 = { git = "https://github.com/openvm-org/openvm.git", rev = "a8262d0"}
+openvm-sha2 = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe"}
 #keccak dependencies
-openvm-keccak256 = { git = "https://github.com/openvm-org/openvm.git", rev = "a8262d0", package = "openvm-keccak256"}
+openvm-keccak256 = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe", package = "openvm-keccak256"}
 # ec dependencies
-openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "a8262d0"}
-openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "a8262d0"}
-openvm-k256 = { git = "https://github.com/openvm-org/openvm.git", rev = "a8262d0", package = "k256"}
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe"}
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe"}
+openvm-k256 = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe", package = "k256"}
 k256 = { version = "0.13", default-features = false, features = ["ecdsa", "arithmetic"], optional = true }
 # XMD expander from the `elliptic-curve` crate; used by `hash_to_curve.rs`.
 elliptic-curve = { version = "0.13", default-features = false, features = ["hash2curve"] }

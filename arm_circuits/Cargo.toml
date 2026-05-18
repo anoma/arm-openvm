@@ -10,13 +10,13 @@ arm_core = { path = "../arm_core", default-features = false }
 arm_traits = { path = "../arm_traits", default-features = false }
 arm_vm_commit = { path = "../arm_vm_commit" }
 openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false, features = ["parallel"]}
-openvm-sdk = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
-openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
-openvm-circuit = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
+openvm-sdk = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 # deferral / verify-stark plumbing for end-to-end inner-proof verification
-openvm-deferral-circuit = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
-openvm-verify-stark-circuit = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
-openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
+openvm-deferral-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-verify-stark-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 eyre = "0.6"
 
 [features]
