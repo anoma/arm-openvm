@@ -32,8 +32,9 @@ pub fn hash_from_bytes(msg: &[u8], dst: &[u8]) -> Secp256k1Point {
     let (qx0, qy0) = isogeny(rx0, ry0);
     let (rx1, ry1) = osswu(&u[1]);
     let (qx1, qy1) = isogeny(rx1, ry1);
-    let p0 = Secp256k1Point::from_xy_nonidentity(qx0, qy0).unwrap();
-    let p1 = Secp256k1Point::from_xy_nonidentity(qx1, qy1).unwrap();
+    // TODO! CHECK WHETHER THIS CAN BE MADE SAFE
+    let p0 = unsafe { Secp256k1Point::from_xy_nonidentity(qx0, qy0).unwrap() };
+    let p1 = unsafe { Secp256k1Point::from_xy_nonidentity(qx1, qy1).unwrap() };
     &p0 + &p1
 }
 

@@ -6,10 +6,10 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-openvm-sdk = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
-openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
-openvm-recursion-circuit = { git = "https://github.com/openvm-org/openvm", tag = "v2.0.0-beta.2" }
-openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v2.0.0-beta.2", default-features = false }
+openvm-sdk = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
+openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
+openvm-recursion-circuit = { git = "https://github.com/openvm-org/openvm", rev = "a8262d0" }
+openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false , features = ["parallel"]}
 p3-field = "0.4.1"
 eyre = "0.6"
 
