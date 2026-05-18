@@ -220,8 +220,16 @@ fn main() -> eyre::Result<()> {
     let def_input = DeferralInput::from_inputs(&[logic_proof_consumed, logic_proof_created]);
 
     let t = Instant::now();
-    let (_compliance_proof, _baseline) =
-        compliance_sdk.prove(compliance_exe, compliance_stdin, &[def_input])?;
+    #[cfg(not(feature = "evm"))]
+    {
+        let (_compliance_proof, _baseline) =
+            compliance_sdk.prove(compliance_exe, compliance_stdin, &[def_input])?;
+    }
+
+    #[cfg(feature = "evm")]
+    {
+        compliance_sdk.prove_evm(compliance_exe, compliance_stdin, &[def_input])?;
+    }
     eprintln!("compliance proof:        {:?}", t.elapsed());
 
     eprintln!("end-to-end OK");

@@ -21,6 +21,7 @@ eyre = "0.6"
 
 [features]
 default = []
+evm = ["openvm-sdk/evm-prove"]
 cuda = [
     "openvm-sdk/cuda",
     "openvm-circuit/cuda",
