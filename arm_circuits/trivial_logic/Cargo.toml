@@ -16,11 +16,6 @@ serde = { version = "1", default-features = false, features = ["derive", "alloc"
 # for writing instance data
 alloy-sol-types = { version = "0.8", default-features = false }
 
-# unneeded but currently matching extension set
-openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
-openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
-openvm-k256 = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe", package = "k256" }
-
 [profile.release]
 opt-level = 3
 lto = "thin"

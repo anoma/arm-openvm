@@ -7,6 +7,7 @@ use arm_core::tree::Proof;
 use arm_core::witness::{ComplianceWitness, ConsumedWitness, CreatedWitness};
 use arm_traits::resource::Resource as ResourceTrait;
 use arm_vm_commit::{f_slice_to_bytes, logic_sdk_vm_config};
+use openvm_sdk_config::SdkVmConfig;
 
 use openvm_circuit::arch::instructions::{DEFERRAL_AS, exe::VmExe};
 use openvm_deferral_circuit::DeferralFn;
@@ -159,8 +160,9 @@ fn main() -> eyre::Result<()> {
     let deferral_ext =
         deferral_prover.make_extension(vec![Arc::new(DeferralFn::new(verify_stark_deferral_fn))]);
 
-    // ---- 5. Build sdk_compliance: LOGIC config + deferral_ext ----
-    let mut compliance_vm_config = logic_sdk_vm_config()?;
+    // ---- 5. Build sdk_compliance ----
+    let mut compliance_vm_config =
+        SdkVmConfig::from_toml(include_str!("../../compliance/openvm.toml"))?;
     compliance_vm_config.deferral = Some(deferral_ext);
     compliance_vm_config.system.config.memory_config.addr_spaces[DEFERRAL_AS as usize].num_cells =
         1 << 25;

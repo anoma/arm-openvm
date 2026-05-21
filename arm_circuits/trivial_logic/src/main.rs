@@ -1,8 +1,6 @@
 use alloy_sol_types::{SolValue, sol};
 use arm_core::instance::{AppData, Payload, ResourceLogicInstance};
 
-openvm::init!();
-
 sol! {
     struct SolLogicInstance {
        bytes32 tag;
