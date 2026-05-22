@@ -65,12 +65,8 @@ pub struct ActionVerifierInput {
 /// An RM transaction datatype
 /// Assumes one compliance unit per action
 pub struct Transaction {
-    // Since we have variable-sized proofs, we can assume that
-    // each each action corresponds to exactly one compliance unit
-    // in this implementation
-    units: Vec<(ActionInstance, Proof)>,
-    delta_proof: [u8; 65],
-    aggregation_proof: Vec<u8>,
+    pub units: Vec<ActionVerifierInput>,
+    pub delta_proof: [u8; 65],
 }
 
 // ABI representations of the instance data for EVM chains
