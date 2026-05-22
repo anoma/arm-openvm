@@ -2,7 +2,6 @@
 
 extern crate alloc;
 
-pub mod compliance;
 #[cfg(feature = "host")]
 pub mod delta;
 pub mod error;
