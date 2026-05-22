@@ -177,6 +177,113 @@ impl ActionInstance {
             deltaY: self.delta_y.into(),
         }
     }
+
+    pub fn delta_msg(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(32 * (self.consumed.len() + self.created.len()));
+        for c in &self.consumed {
+            msg.extend_from_slice(&c.nullifier);
+        }
+        for c in &self.created {
+            msg.extend_from_slice(&c.commitment);
+        }
+        msg
+    }
+}
+
+#[cfg(feature = "host")]
+pub static COMPLIANCE_VK: once_cell::sync::OnceCell<
+    openvm_verify_stark_host::vk::VmStarkVerifyingKey,
+> = once_cell::sync::OnceCell::new();
+
+#[cfg(feature = "host")]
+impl ActionVerifierInput {
+    pub fn verify(&self) -> Result<(), crate::error::ArmError> {
+        use crate::error::ArmError;
+        use alloy_sol_types::SolValue;
+        use openvm_stark_backend::codec::Decode;
+        use openvm_verify_stark_host::{VmStarkProof, verify_vm_stark_proof_decoded};
+        use p3_field::PrimeField32;
+
+        let vk = COMPLIANCE_VK.get().expect(
+            "arm_core::instance::COMPLIANCE_VK must be initialized via .set(...) before verify",
+        );
+
+        let proof = VmStarkProof::decode_from_bytes(&self.compliance_proof)
+            .map_err(|_| ArmError::ComplianceProofVerificationFailed)?;
+        verify_vm_stark_proof_decoded(vk, &proof)
+            .map_err(|_| ArmError::ComplianceProofVerificationFailed)?;
+
+        let expected = crate::hash::keccak256(&self.action_instance.to_sol().abi_encode());
+        let revealed: Vec<u8> = proof
+            .user_pvs_proof
+            .public_values
+            .iter()
+            .map(|f| f.as_canonical_u32() as u8)
+            .collect();
+        if revealed.as_slice() != expected.as_ref() {
+            return Err(ArmError::ActionInstanceMismatch);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "host")]
+impl ActionInstance {
+    pub fn delta_point(&self) -> Result<k256::ProjectivePoint, crate::error::ArmError> {
+        use k256::elliptic_curve::sec1::FromEncodedPoint;
+        let encoded_point = k256::EncodedPoint::from_affine_coordinates(
+            (&self.delta_x).into(),
+            (&self.delta_y).into(),
+            false,
+        );
+        k256::ProjectivePoint::from_encoded_point(&encoded_point)
+            .into_option()
+            .ok_or(crate::error::ArmError::InvalidDelta)
+    }
+}
+
+#[cfg(feature = "host")]
+impl Transaction {
+    pub fn verify(&self) -> Result<(), crate::error::ArmError> {
+        use crate::delta::{DeltaInstance, DeltaProof};
+        use crate::error::ArmError;
+        use alloc::collections::BTreeSet;
+
+        for unit in &self.units {
+            unit.verify()?;
+        }
+
+        let mut seen_nullifiers = BTreeSet::new();
+        let mut seen_commitments = BTreeSet::new();
+        for unit in &self.units {
+            for c in &unit.action_instance.consumed {
+                if !seen_nullifiers.insert(c.nullifier) {
+                    return Err(ArmError::NullifierDuplication);
+                }
+            }
+            for c in &unit.action_instance.created {
+                if !seen_commitments.insert(c.commitment) {
+                    return Err(ArmError::CommitmentDuplication);
+                }
+            }
+        }
+
+        let deltas: Vec<k256::ProjectivePoint> = self
+            .units
+            .iter()
+            .map(|u| u.action_instance.delta_point())
+            .collect::<Result<Vec<_>, _>>()?;
+        let instance = DeltaInstance::from_deltas(&deltas)?;
+        let msg: Vec<u8> = self
+            .units
+            .iter()
+            .flat_map(|u| u.action_instance.delta_msg())
+            .collect();
+        let proof = DeltaProof::from_bytes(&self.delta_proof)?;
+        DeltaProof::verify(&msg, &proof, instance)?;
+
+        Ok(())
+    }
 }
 
 /// Resource Logic Insance returned by any custom guest program
