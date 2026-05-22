@@ -9,6 +9,10 @@ repository = { workspace = true }
 openvm-sdk = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 openvm-sdk-config = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 openvm-recursion-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-deferral-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-verify-stark-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false , features = ["parallel"]}
 p3-field = "0.4.1"
 eyre = "0.6"
@@ -16,3 +20,7 @@ eyre = "0.6"
 [[bin]]
 name = "print-logic-vm-commit"
 path = "src/bin/print.rs"
+
+[[bin]]
+name = "print-compliance-vm-commit"
+path = "src/bin/print_compliance.rs"

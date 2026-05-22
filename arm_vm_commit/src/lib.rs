@@ -4,16 +4,27 @@
 //! when verifying inner logic STARK proofs via the deferral mechanism.
 
 use core::mem::size_of_val;
+use std::sync::Arc;
+
 use eyre::Result;
+use openvm_circuit::arch::instructions::DEFERRAL_AS;
+use openvm_deferral_circuit::DeferralFn;
 use openvm_recursion_circuit::utils::poseidon2_hash_slice;
 use openvm_sdk::{
     Sdk,
-    config::{AggregationSystemParams, AppConfig},
+    config::{AggregationConfig, AggregationSystemParams, AppConfig},
+    prover::DeferralProver,
 };
 use openvm_sdk_config::SdkVmConfig;
 use openvm_stark_sdk::config::{
-    app_params_with_100_bits_security, baby_bear_poseidon2::F,
+    app_params_with_100_bits_security,
+    baby_bear_poseidon2::{BabyBearPoseidon2CpuEngine, F},
     internal_params_with_100_bits_security, leaf_params_with_100_bits_security,
+    root_params_with_100_bits_security,
+};
+use openvm_verify_stark_circuit::{
+    extension::verify_stark_deferral_fn,
+    prover::{DeferredVerifyCpuCircuitProver, DeferredVerifyCpuProver},
 };
 use p3_field::PrimeField32;
 
@@ -31,6 +42,10 @@ pub fn f_slice_to_bytes(slice: &[F]) -> Vec<u8> {
 
 pub fn logic_sdk_vm_config() -> Result<SdkVmConfig> {
     Ok(SdkVmConfig::from_toml(include_str!("../logic.toml"))?)
+}
+
+pub fn compliance_sdk_vm_config() -> Result<SdkVmConfig> {
+    Ok(SdkVmConfig::from_toml(include_str!("../compliance.toml"))?)
 }
 
 pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
@@ -52,6 +67,77 @@ pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
     let leaf_vk = agg.internal_for_leaf_prover.get_vk_commit(false);
     let i4l_vk = agg.internal_recursive_prover.get_vk_commit(false);
 
+    let components: Vec<F> = [
+        app_vk.cached_commit,
+        app_vk.vk_pre_hash,
+        leaf_vk.cached_commit,
+        leaf_vk.vk_pre_hash,
+        i4l_vk.cached_commit,
+        i4l_vk.vk_pre_hash,
+    ]
+    .concat();
+
+    let digest = poseidon2_hash_slice(&components).0;
+    Ok(f_slice_to_bytes(&digest)
+        .try_into()
+        .expect("f_slice_to_bytes of [F; 8] always yields 32 bytes"))
+}
+
+pub fn compute_compliance_vm_commit() -> Result<[u8; 32]> {
+    let app_params = app_params_with_100_bits_security(21);
+    let agg_params = AggregationSystemParams {
+        leaf: leaf_params_with_100_bits_security(),
+        internal: internal_params_with_100_bits_security(),
+    };
+
+    // Build the logic SDK to extract the deferral verifier's ir_vk + PCS commitment.
+    let logic_app_config = AppConfig::new(logic_sdk_vm_config()?, app_params.clone());
+    let logic_sdk = Sdk::new(logic_app_config, agg_params.clone())?;
+
+    let agg = logic_sdk.agg_prover();
+    let ir_vk = agg.internal_recursive_prover.get_vk();
+    let ir_pcs = agg
+        .internal_recursive_prover
+        .get_self_vk_pcs_data()
+        .unwrap();
+    let logic_sys = logic_sdk.app_config().app_vm_config.as_ref().clone();
+    let verify_prover = DeferredVerifyCpuProver::new::<BabyBearPoseidon2CpuEngine>(
+        ir_vk,
+        ir_pcs.commitment.into(),
+        internal_params_with_100_bits_security(),
+        logic_sys.memory_config.memory_dimensions(),
+        logic_sys.num_public_values,
+        None,
+        0,
+    );
+    let verify_circuit_prover = DeferredVerifyCpuCircuitProver::new(verify_prover);
+    let deferral_prover = DeferralProver::new(
+        verify_circuit_prover,
+        AggregationConfig {
+            params: agg_params.clone(),
+        },
+        root_params_with_100_bits_security(),
+    );
+    let deferral_ext =
+        deferral_prover.make_extension(vec![Arc::new(DeferralFn::new(verify_stark_deferral_fn))]);
+
+    // Splice deferral_ext into the compliance VM config (overrides toml placeholder).
+    let mut compliance_vm_config = compliance_sdk_vm_config()?;
+    compliance_vm_config.deferral = Some(deferral_ext);
+    compliance_vm_config.system.config.memory_config.addr_spaces[DEFERRAL_AS as usize].num_cells =
+        1 << 25;
+
+    let compliance_app_config = AppConfig::new(compliance_vm_config, app_params);
+    let compliance_sdk = Sdk::builder()
+        .app_config(compliance_app_config)
+        .agg_params(agg_params)
+        .deferral_prover(deferral_prover)
+        .build()?;
+
+    let agg = compliance_sdk.agg_prover();
+    let app_vk = agg.leaf_prover.get_vk_commit(false);
+    let leaf_vk = agg.internal_for_leaf_prover.get_vk_commit(false);
+    let i4l_vk = agg.internal_recursive_prover.get_vk_commit(false);
     let components: Vec<F> = [
         app_vk.cached_commit,
         app_vk.vk_pre_hash,
