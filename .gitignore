@@ -7,3 +7,14 @@ Cargo.lock
 *~
 \#*\#
 .dir-locals.el
+
+# Elixir / mix
+/_build/
+/deps/
+/doc/
+/cover/
+*.ez
+erl_crash.dump
+
+# rustler NIF build artifact
+*.so
