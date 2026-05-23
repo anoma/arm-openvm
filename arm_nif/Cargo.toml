@@ -1,0 +1,17 @@
+[package]
+name = "arm_nif"
+version = "0.1.0"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+name = "arm_nif"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+arm_core = { path = "../arm_core" }
+rustler = "0.31"
+bincode = { version = "2.0", features = ["serde"] }
+thiserror = "2.0.6"
