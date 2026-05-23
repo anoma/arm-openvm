@@ -9,6 +9,7 @@ use crate::{
     hash::keccak256,
     proving::{DEF_IDX, LOGIC_VM_COMMIT},
 };
+use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 use alloy_sol_types::{SolValue, sol};
 use openvm_verify_stark_guest::{ProofOutput, verify_stark};
@@ -270,6 +271,14 @@ impl Transaction {
             .flat_map(|u| u.action_instance.created.iter().map(|c| c.commitment))
             .collect()
     }
+
+    /// Function fetching the set of roots in a transaction
+    pub fn roots(&self) -> BTreeSet<[u8; 32]> {
+        self.units
+            .iter()
+            .flat_map(|u| u.action_instance.consumed.iter().map(|c| c.root))
+            .collect()
+    }
 }
 
 #[cfg(feature = "host")]
@@ -277,7 +286,6 @@ impl Transaction {
     pub fn verify(&self) -> Result<(), crate::error::ArmError> {
         use crate::delta::{DeltaInstance, DeltaProof};
         use crate::error::ArmError;
-        use alloc::collections::BTreeSet;
 
         for unit in &self.units {
             unit.verify()?;
