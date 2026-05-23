@@ -212,29 +212,15 @@ pub static COMPLIANCE_VK: std::sync::LazyLock<openvm_verify_stark_host::vk::VmSt
 impl ActionVerifierInput {
     pub fn verify(&self) -> Result<(), crate::error::ArmError> {
         use crate::error::ArmError;
+        use crate::proving::verify_stark;
         use alloy_sol_types::SolValue;
         use openvm_stark_backend::codec::Decode;
-        use openvm_verify_stark_host::{VmStarkProof, verify_vm_stark_proof_decoded};
-        use p3_field::PrimeField32;
-
-        let vk = &*COMPLIANCE_VK;
-
+        use openvm_verify_stark_host::VmStarkProof;
         let proof = VmStarkProof::decode_from_bytes(&self.compliance_proof)
-            .map_err(|_| ArmError::ComplianceProofVerificationFailed)?;
-        verify_vm_stark_proof_decoded(vk, &proof)
-            .map_err(|_| ArmError::ComplianceProofVerificationFailed)?;
+            .map_err(|_| ArmError::InvalidProof)?;
+        let instance = crate::hash::keccak256(&self.action_instance.to_sol().abi_encode());
 
-        let expected = crate::hash::keccak256(&self.action_instance.to_sol().abi_encode());
-        let revealed: Vec<u8> = proof
-            .user_pvs_proof
-            .public_values
-            .iter()
-            .map(|f| f.as_canonical_u32() as u8)
-            .collect();
-        if revealed.as_slice() != expected.as_ref() {
-            return Err(ArmError::ActionInstanceMismatch);
-        }
-        Ok(())
+        verify_stark(&COMPLIANCE_VK, &instance, &proof)
     }
 }
 
