@@ -83,6 +83,67 @@ pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
         .expect("f_slice_to_bytes of [F; 8] always yields 32 bytes"))
 }
 
+pub fn construct_compliance_vk(
+    vmexe_bytes: &[u8],
+) -> Result<openvm_verify_stark_host::vk::VmStarkVerifyingKey> {
+    let app_params = app_params_with_100_bits_security(21);
+    let agg_params = AggregationSystemParams {
+        leaf: leaf_params_with_100_bits_security(),
+        internal: internal_params_with_100_bits_security(),
+    };
+
+    let logic_app_config = AppConfig::new(logic_sdk_vm_config()?, app_params.clone());
+    let logic_sdk = Sdk::new(logic_app_config, agg_params.clone())?;
+
+    let agg = logic_sdk.agg_prover();
+    let ir_vk = agg.internal_recursive_prover.get_vk();
+    let ir_pcs = agg
+        .internal_recursive_prover
+        .get_self_vk_pcs_data()
+        .unwrap();
+    let logic_sys = logic_sdk.app_config().app_vm_config.as_ref().clone();
+    let verify_prover = DeferredVerifyCpuProver::new::<BabyBearPoseidon2CpuEngine>(
+        ir_vk,
+        ir_pcs.commitment.into(),
+        internal_params_with_100_bits_security(),
+        logic_sys.memory_config.memory_dimensions(),
+        logic_sys.num_public_values,
+        None,
+        0,
+    );
+    let verify_circuit_prover = DeferredVerifyCpuCircuitProver::new(verify_prover);
+    let deferral_prover = DeferralProver::new(
+        verify_circuit_prover,
+        AggregationConfig {
+            params: agg_params.clone(),
+        },
+        root_params_with_100_bits_security(),
+    );
+    let deferral_ext =
+        deferral_prover.make_extension(vec![Arc::new(DeferralFn::new(verify_stark_deferral_fn))]);
+
+    let mut compliance_vm_config = compliance_sdk_vm_config()?;
+    compliance_vm_config.deferral = Some(deferral_ext);
+    compliance_vm_config.system.config.memory_config.addr_spaces[DEFERRAL_AS as usize].num_cells =
+        1 << 25;
+
+    let compliance_app_config = AppConfig::new(compliance_vm_config, app_params);
+    let compliance_sdk = Sdk::builder()
+        .app_config(compliance_app_config)
+        .agg_params(agg_params)
+        .deferral_prover(deferral_prover)
+        .build()?;
+
+    // .vmexe is bitcode-serialized by `cargo openvm build`; deserialize to build the StarkProver
+    // and get the (vmexe-dependent) baseline.
+    let vmexe: openvm_circuit::arch::instructions::exe::VmExe<F> = bitcode::deserialize(vmexe_bytes)?;
+    let prover = compliance_sdk.prover(vmexe)?;
+    let baseline = prover.generate_baseline();
+    let mvk = compliance_sdk.agg_vk().as_ref().clone();
+
+    Ok(openvm_verify_stark_host::vk::VmStarkVerifyingKey { mvk, baseline })
+}
+
 pub fn compute_compliance_vm_commit() -> Result<[u8; 32]> {
     let app_params = app_params_with_100_bits_security(21);
     let agg_params = AggregationSystemParams {

@@ -1,5 +1,5 @@
 [workspace]
-members = ["arm_traits", "arm_core", "arm_circuits", "arm_vm_commit"]
+members = ["arm_traits", "arm_core", "arm_circuits", "arm_vm_commit", "arm_nif"]
 exclude = ["arm_circuits/compliance", "arm_circuits/trivial_logic"]
 resolver = "2"
 

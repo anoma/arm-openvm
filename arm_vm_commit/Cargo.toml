@@ -16,6 +16,8 @@ openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm", rev =
 openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false , features = ["parallel"]}
 p3-field = "0.4.1"
 eyre = "0.6"
+bitcode = { version = "0.6.5", default-features = false, features = ["serde"] }
+bincode = { version = "2.0", features = ["serde"] }
 
 [[bin]]
 name = "print-logic-vm-commit"
@@ -24,3 +26,7 @@ path = "src/bin/print.rs"
 [[bin]]
 name = "print-compliance-vm-commit"
 path = "src/bin/print_compliance.rs"
+
+[[bin]]
+name = "print-compliance-vk"
+path = "src/bin/print_compliance_vk.rs"

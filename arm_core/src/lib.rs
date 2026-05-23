@@ -1,6 +1,8 @@
 #![no_std]
 
 extern crate alloc;
+#[cfg(feature = "host")]
+extern crate std;
 
 #[cfg(feature = "host")]
 pub mod delta;

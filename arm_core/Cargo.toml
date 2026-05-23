@@ -8,6 +8,7 @@ repository = { workspace = true }
 [dependencies]
 arm_traits = { path = "../arm_traits" }
 serde = { version = "1", default-features = false, features = ["derive", "alloc"]}
+serde-big-array = { version = "0.5", default-features = false }
 # needed for expandmsgxmd for delta, openvm does not currently implement blocksizeuser for it's sha2
 digest = { version = "0.10", default-features = false }
 # for EVM-specific write encodings
@@ -29,7 +30,7 @@ k256 = { version = "0.13", default-features = false, features = ["ecdsa", "arith
 openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe", optional = true }
 openvm-stark-backend = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false, optional = true }
 p3-field = { version = "0.4.1", optional = true }
-once_cell = { version = "1", optional = true }
+bincode = { version = "2.0", features = ["serde"], optional = true }
 # XMD expander from the `elliptic-curve` crate; used by `hash_to_curve.rs`.
 elliptic-curve = { version = "0.13", default-features = false, features = ["hash2curve"] }
 
@@ -37,4 +38,4 @@ thiserror = { version = "2.0.6", default-features = false }
 
 [features]
 default = ["host"]
-host = ["dep:k256", "dep:openvm-verify-stark-host", "dep:openvm-stark-backend", "dep:p3-field", "dep:once_cell"]
+host = ["dep:k256", "dep:openvm-verify-stark-host", "dep:openvm-stark-backend", "dep:p3-field", "dep:bincode"]

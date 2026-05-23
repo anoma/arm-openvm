@@ -32,6 +32,7 @@ pub struct AppData {
 }
 
 /// Instance returned by the compliance program for each consumed resource
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ConsumedInstance {
     pub nullifier: [u8; 32],
     pub root: [u8; 32],
@@ -41,6 +42,7 @@ pub struct ConsumedInstance {
 }
 
 /// Instance returned by the compliance program for each created resource
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct CreatedInstance {
     pub commitment: [u8; 32],
     pub outer_logic_ref: [u8; 32],
@@ -49,6 +51,7 @@ pub struct CreatedInstance {
 }
 
 /// A type implementing both compliance instance and action interfaces
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ActionInstance {
     pub consumed: Vec<ConsumedInstance>,
     pub created: Vec<CreatedInstance>,
@@ -57,6 +60,7 @@ pub struct ActionInstance {
 }
 
 /// A type implementing both compliance unit and action interfaces
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ActionVerifierInput {
     pub action_instance: ActionInstance,
     pub compliance_proof: Proof,
@@ -64,8 +68,10 @@ pub struct ActionVerifierInput {
 
 /// An RM transaction datatype
 /// Assumes one compliance unit per action
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Transaction {
     pub units: Vec<ActionVerifierInput>,
+    #[serde(with = "serde_big_array::BigArray")]
     pub delta_proof: [u8; 65],
 }
 
@@ -191,9 +197,15 @@ impl ActionInstance {
 }
 
 #[cfg(feature = "host")]
-pub static COMPLIANCE_VK: once_cell::sync::OnceCell<
-    openvm_verify_stark_host::vk::VmStarkVerifyingKey,
-> = once_cell::sync::OnceCell::new();
+pub static COMPLIANCE_VK: std::sync::LazyLock<openvm_verify_stark_host::vk::VmStarkVerifyingKey> =
+    std::sync::LazyLock::new(|| {
+        bincode::serde::decode_from_slice(
+            include_bytes!("../compliance.vk"),
+            bincode::config::standard(),
+        )
+        .expect("embedded compliance.vk must deserialize")
+        .0
+    });
 
 #[cfg(feature = "host")]
 impl ActionVerifierInput {
@@ -204,9 +216,7 @@ impl ActionVerifierInput {
         use openvm_verify_stark_host::{VmStarkProof, verify_vm_stark_proof_decoded};
         use p3_field::PrimeField32;
 
-        let vk = COMPLIANCE_VK.get().expect(
-            "arm_core::instance::COMPLIANCE_VK must be initialized via .set(...) before verify",
-        );
+        let vk = &*COMPLIANCE_VK;
 
         let proof = VmStarkProof::decode_from_bytes(&self.compliance_proof)
             .map_err(|_| ArmError::ComplianceProofVerificationFailed)?;
