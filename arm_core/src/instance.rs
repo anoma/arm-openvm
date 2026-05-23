@@ -242,6 +242,26 @@ impl ActionInstance {
     }
 }
 
+impl Transaction {
+    /// Function fetching all nullifiers in a transaction
+    /// as ordered by the actions
+    pub fn nullifiers(&self) -> Vec<[u8; 32]> {
+        self.units
+            .iter()
+            .flat_map(|u| u.action_instance.consumed.iter().map(|c| c.nullifier))
+            .collect()
+    }
+
+    /// Function fetching all commitments in a transaction
+    /// as ordered by the actions
+    pub fn commitments(&self) -> Vec<[u8; 32]> {
+        self.units
+            .iter()
+            .flat_map(|u| u.action_instance.created.iter().map(|c| c.commitment))
+            .collect()
+    }
+}
+
 #[cfg(feature = "host")]
 impl Transaction {
     pub fn verify(&self) -> Result<(), crate::error::ArmError> {
