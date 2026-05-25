@@ -38,16 +38,16 @@ defmodule ArmOpenvm.Verifier do
   needed for global checks and storage.
   """
   @spec verify_and_extract(binary()) ::
-          {[{binary(), app_data_blobs()}], [{binary(), app_data_blobs()}], [binary()]}
+          {[{<<_::256>>, app_data_blobs()}], [{<<_::256>>, app_data_blobs()}], [<<_::256>>]}
           | {:error, term()}
   def verify_and_extract(_tx_bytes), do: error()
 
   @doc "All nullifiers (32-byte binaries) in the transaction, in transaction order."
-  @spec transaction_nullifiers(binary()) :: nif_result(list(binary()))
+  @spec transaction_nullifiers(binary()) :: nif_result(list(<<_::256>>))
   def transaction_nullifiers(_tx_bytes), do: error()
 
   @doc "All commitments (32-byte binaries) in the transaction, in transaction order."
-  @spec transaction_commitments(binary()) :: nif_result(list(binary()))
+  @spec transaction_commitments(binary()) :: nif_result(list(<<_::256>>))
   def transaction_commitments(_tx_bytes), do: error()
 
   @doc """
@@ -55,7 +55,7 @@ defmodule ArmOpenvm.Verifier do
   sorted list of 32-byte binaries. Build a `MapSet` from it to check containment
   against the historical roots set.
   """
-  @spec transaction_roots(binary()) :: nif_result(list(binary()))
+  @spec transaction_roots(binary()) :: nif_result(list(<<_::256>>))
   def transaction_roots(_tx_bytes), do: error()
 
   defp error, do: :erlang.nif_error(:nif_not_loaded)
