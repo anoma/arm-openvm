@@ -16,6 +16,12 @@ defmodule ArmOpenvm.Verifier do
   @typedoc "Result type for NIF functions that can return errors"
   @type nif_result(t) :: t | {:error, term()}
 
+  @typedoc "A payload blob with its deletion criterion."
+  @type blob :: {binary(), boolean()}
+
+  @typedoc "The four payload categories: {resource, encryption, external, discovery}."
+  @type app_data_blobs :: {[blob()], [blob()], [blob()], [blob()]}
+
   @doc """
   Verify a bincode-encoded Transaction.
 
@@ -26,6 +32,15 @@ defmodule ArmOpenvm.Verifier do
   """
   @spec verify_transaction(binary()) :: nif_result(boolean())
   def verify_transaction(_tx_bytes), do: error()
+
+  @doc """
+  Decode + verify a transaction in one pass and return its effects
+  needed for global checks and storage.
+  """
+  @spec verify_and_extract(binary()) ::
+          {[{binary(), app_data_blobs()}], [{binary(), app_data_blobs()}], [binary()]}
+          | {:error, term()}
+  def verify_and_extract(_tx_bytes), do: error()
 
   @doc "All nullifiers (32-byte binaries) in the transaction, in transaction order."
   @spec transaction_nullifiers(binary()) :: nif_result(list(binary()))
