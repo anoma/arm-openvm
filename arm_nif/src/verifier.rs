@@ -2,8 +2,18 @@ use crate::error::ArmNifError;
 use arm_core::instance::{AppData, Payload, Transaction};
 use rustler::{Binary, Env, NifResult, OwnedBinary};
 
+/// Upper bound on a decoded transaction
+const MAX_TX_BYTES: usize = 128 * 1024 * 1024; // 128 MiB
+
 fn decode_tx(tx_bytes: &[u8]) -> Result<Transaction, ArmNifError> {
-    Ok(bincode::serde::decode_from_slice(tx_bytes, bincode::config::standard())?.0)
+    let (tx, read) = bincode::serde::decode_from_slice(
+        tx_bytes,
+        bincode::config::standard().with_limit::<MAX_TX_BYTES>(),
+    )?;
+    if read != tx_bytes.len() {
+        return Err(ArmNifError::TrailingBytes);
+    }
+    Ok(tx)
 }
 
 /// Copy bytes into a freshly-allocated Erlang binary.

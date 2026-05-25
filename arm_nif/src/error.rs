@@ -8,6 +8,8 @@ pub enum ArmNifError {
     BincodeDecode(#[from] DecodeError),
     #[error("ARM error: {0}")]
     Arm(#[from] arm_core::error::ArmError),
+    #[error("trailing bytes after the transaction encoding")]
+    TrailingBytes,
 }
 
 impl Encoder for ArmNifError {
