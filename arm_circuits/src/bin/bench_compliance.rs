@@ -3,7 +3,7 @@
 use arm_core::instance::{AppData, ResourceLogicInstance};
 use arm_core::nullifier_key::NullifierKey;
 use arm_core::resource::Resource;
-use arm_core::tree::Proof;
+use arm_core::tree::{Proof, SparseTree};
 use arm_core::witness::{ComplianceWitness, ConsumedWitness, CreatedWitness};
 use arm_traits::resource::Resource as ResourceTrait;
 use arm_vm_commit::{f_slice_to_bytes, logic_sdk_vm_config};
@@ -72,7 +72,6 @@ fn main() -> eyre::Result<()> {
     // ---- 2. Fixture: 1 consumed + 1 created resource ----
     let nullifier_key = NullifierKey { bytes: [6u8; 32] };
     let nk_commitment = arm_core::hash::keccak256(&nullifier_key.bytes);
-    let action_root = [13u8; 32];
     let app_data = AppData::default();
 
     let consumed_resource = Resource {
@@ -104,6 +103,10 @@ fn main() -> eyre::Result<()> {
     // ---- 3. Prove logic for each resource ----
     let consumed_tag = consumed_resource.nullify(&nullifier_key).unwrap();
     let created_tag = created_resource.commit();
+    let action_root = *SparseTree::compute_tree(&[consumed_tag, created_tag])
+        .unwrap()
+        .root()
+        .unwrap();
 
     let logic_witness_consumed = ResourceLogicInstance {
         tag: consumed_tag,

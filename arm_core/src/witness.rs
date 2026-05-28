@@ -184,6 +184,7 @@ impl ComplianceWitness {
             consumed: consumed_instances,
             delta_x: delta.x_be_bytes(),
             delta_y: delta.y_be_bytes(),
+            action_root: self.action_root,
         })
     }
 }

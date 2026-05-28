@@ -58,6 +58,7 @@ pub struct ActionInstance {
     pub created: Vec<CreatedInstance>,
     pub delta_x: [u8; 32],
     pub delta_y: [u8; 32],
+    pub action_root: [u8; 32],
 }
 
 /// A type implementing both compliance unit and action interfaces
@@ -115,6 +116,7 @@ sol! {
         SolCreatedInstance[] created;
         bytes32 deltaX;
         bytes32 deltaY;
+        bytes32 actionRoot;
     }
 }
 
@@ -182,6 +184,7 @@ impl ActionInstance {
             created: self.created.iter().map(CreatedInstance::to_sol).collect(),
             deltaX: self.delta_x.into(),
             deltaY: self.delta_y.into(),
+            actionRoot: self.action_root.into(),
         }
     }
 
@@ -194,6 +197,16 @@ impl ActionInstance {
             msg.extend_from_slice(&c.commitment);
         }
         msg
+    }
+
+    /// The action's tags in canonical order: consumed nullifiers, then created
+    /// commitments. The action tree is built over exactly this sequence.
+    pub fn tags(&self) -> Vec<[u8; 32]> {
+        self.consumed
+            .iter()
+            .map(|c| c.nullifier)
+            .chain(self.created.iter().map(|c| c.commitment))
+            .collect()
     }
 }
 
@@ -213,9 +226,21 @@ impl ActionVerifierInput {
     pub fn verify(&self) -> Result<(), crate::error::ArmError> {
         use crate::error::ArmError;
         use crate::proving::verify_stark;
+        use crate::tree::SparseTree;
         use alloy_sol_types::SolValue;
         use openvm_stark_backend::codec::Decode;
         use openvm_verify_stark_host::VmStarkProof;
+
+        // bind the committed action root to the action's actual tags
+        let tags = self.action_instance.tags();
+        let computed_root = SparseTree::compute_tree(&tags)
+            .ok()
+            .and_then(|tree| tree.root().copied())
+            .ok_or(ArmError::ActionRootMismatch)?;
+        if computed_root != self.action_instance.action_root {
+            return Err(ArmError::ActionRootMismatch);
+        }
+
         let proof = VmStarkProof::decode_from_bytes(&self.compliance_proof)
             .map_err(|_| ArmError::InvalidProof)?;
         let instance = crate::hash::keccak256(&self.action_instance.to_sol().abi_encode());
