@@ -9,7 +9,7 @@ repository = { workspace = true }
 arm_traits = { path = "../arm_traits" }
 serde = { version = "1", default-features = false, features = ["derive", "alloc"]}
 serde-big-array = { version = "0.5", default-features = false }
-# needed for expandmsgxmd for delta, openvm does not currently implement blocksizeuser for it's sha2
+# the expand_message_xmd keccak wrapper needs the digest block-size traits
 digest = { version = "0.10", default-features = false }
 # for EVM-specific write encodings
 alloy-sol-types = { version = "0.8", default-features = false }
@@ -18,8 +18,6 @@ alloy-sol-types = { version = "0.8", default-features = false }
 # openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v2.0.0-beta.1" }
 #proof-deferral dependency
 openvm-verify-stark-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe"}
-#sha2 dependencies
-openvm-sha2 = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe"}
 #keccak dependencies
 openvm-keccak256 = { git = "https://github.com/openvm-org/openvm.git", rev = "f08f0fe", package = "openvm-keccak256"}
 # ec dependencies

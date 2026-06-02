@@ -7,18 +7,16 @@ use alloc::vec::Vec;
 
 use digest::{
     FixedOutput, HashMarker, Output, OutputSizeUser, Update,
-    consts::{U32, U64},
+    consts::{U32, U136},
     core_api::BlockSizeUser,
 };
 use elliptic_curve::hash2curve::{ExpandMsg, ExpandMsgXmd, Expander};
 use openvm_algebra_guest::{Field, IntMod, Reduce};
 use openvm_ecc_guest::weierstrass::WeierstrassPoint;
 use openvm_k256::{Secp256k1Coord as ScalarPoint, Secp256k1Point};
-use openvm_sha2::Sha256;
 
-/// Domain separation tag. Mirrors arm-risc0's RFC 9380 test-vector DST for
-/// cross-check purposes.
-pub const DST: &[u8] = b"QUUX-V01-CS02-with-secp256k1_XMD:SHA-256_SSWU_RO_";
+/// Domain separation tag for the keccak-256 XMD expansion.
+pub const DST: &[u8] = b"QUUX-V01-CS02-with-secp256k1_XMD:KECCAK-256_SSWU_RO_";
 
 /// Hash a message to a secp256k1 curve point with unknown discrete log
 /// against the generator.
@@ -290,22 +288,12 @@ fn isogeny(rx: ScalarPoint, ry: ScalarPoint) -> (ScalarPoint, ScalarPoint) {
     (qx, qy)
 }
 
-/// RFC 9380 §5.3: `expand_message_xmd<SHA-256>` followed by reduction to
-/// `count` field elements in `ScalarPoint` (secp256k1 base field, L = 48 per element).
-///
-/// Delegates the XMD loop to `elliptic_curve::hash2curve::ExpandMsgXmd`
-/// parametrised with `openvm_sha2::Sha256`; the SHA-256 calls route through
-/// the openvm precompile on zkvm and through upstream `sha2::Sha256` on host
-/// (both implement `sha2::digest::Digest` via the blanket impl).
-///
-/// The per-element reduction uses openvm-k256's `ScalarPoint::reduce_be_bytes`, which
-/// matches k256's `impl Reduce<Array<u8, U48>> for FieldElement` at L22–L44:
-/// <https://github.com/RustCrypto/elliptic-curves/blob/2ee79cab879dcc051fb46fe41bace8b3ec87ccad/k256/src/arithmetic/hash2curve.rs#L22-L44>
+/// expand_message_xmd (keccak-256) reduced to `count` secp256k1 base-field elements.
 fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<ScalarPoint> {
     let len_in_bytes = count * 48;
     let dsts: &[&[u8]] = &[dst];
     let mut expander =
-        ExpandMsgXmd::<OpenVMSha256>::expand_message(&[msg], dsts, len_in_bytes).unwrap();
+        ExpandMsgXmd::<OpenVMKeccak256>::expand_message(&[msg], dsts, len_in_bytes).unwrap();
 
     let mut result = Vec::with_capacity(count);
     let mut chunk = [0u8; 48];
@@ -320,27 +308,29 @@ fn hash_to_field(msg: &[u8], dst: &[u8], count: usize) -> Vec<ScalarPoint> {
     result
 }
 
+/// Buffers update bytes and keccak-256-hashes them on finalize, routing through
+/// the openvm precompile. Block size is the keccak-256 rate (136 bytes).
 #[derive(Default)]
-struct OpenVMSha256(Sha256);
+struct OpenVMKeccak256(Vec<u8>);
 
-impl HashMarker for OpenVMSha256 {}
+impl HashMarker for OpenVMKeccak256 {}
 
-impl BlockSizeUser for OpenVMSha256 {
-    type BlockSize = U64;
+impl BlockSizeUser for OpenVMKeccak256 {
+    type BlockSize = U136;
 }
 
-impl OutputSizeUser for OpenVMSha256 {
+impl OutputSizeUser for OpenVMKeccak256 {
     type OutputSize = U32;
 }
 
-impl Update for OpenVMSha256 {
+impl Update for OpenVMKeccak256 {
     fn update(&mut self, data: &[u8]) {
-        <Sha256 as Update>::update(&mut self.0, data);
+        self.0.extend_from_slice(data);
     }
 }
 
-impl FixedOutput for OpenVMSha256 {
+impl FixedOutput for OpenVMKeccak256 {
     fn finalize_into(self, out: &mut Output<Self>) {
-        <Sha256 as FixedOutput>::finalize_into(self.0, out);
+        out.copy_from_slice(&crate::hash::keccak256(&self.0));
     }
 }
