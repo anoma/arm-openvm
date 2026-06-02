@@ -18,6 +18,7 @@ openvm-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe"
 openvm-deferral-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 openvm-verify-stark-circuit = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
 openvm-verify-stark-host = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+k256 = { version = "0.13", default-features = false, features = ["arithmetic"] }
 eyre = "0.6"
 
 [features]

@@ -13,9 +13,9 @@ use crate::{
 };
 use alloc::vec::Vec;
 use arm_traits::resource::Resource as ResourceTrait;
-use openvm_algebra_guest::Reduce;
+use openvm_algebra_guest::{IntMod, Reduce};
 use openvm_ecc_guest::{CyclicGroup, weierstrass::WeierstrassPoint};
-use openvm_k256::{Secp256k1Point as CurvePoint, Secp256k1Scalar as Scalar};
+use openvm_k256::{Secp256k1Coord, Secp256k1Point as CurvePoint, Secp256k1Scalar as Scalar};
 
 /// The commitment to the proof used via deferrals
 type LogicProofCommitment = [u8; 32];
@@ -42,10 +42,20 @@ pub struct CreatedWitness {
     pub logic_proof: LogicProofCommitment,
 }
 
+/// An entry in the kind lookup table
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct KindTableEntry {
+    pub logic_ref: [u8; 32],
+    pub label_ref: [u8; 32],
+    pub kind_x: [u8; 32],
+    pub kind_y: [u8; 32],
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ComplianceWitness {
     pub consumed: Vec<ConsumedWitness>,
     pub created: Vec<CreatedWitness>,
+    pub kind_table: Vec<KindTableEntry>,
     // these fields are added for wrapping
     pub action_root: [u8; 32],
 }
@@ -148,7 +158,7 @@ impl ComplianceWitness {
             .consumed
             .iter()
             .map(|x| {
-                delta -= to_delta(&x.resource, x.delta_extra_input);
+                delta -= to_delta(&self.kind_table, &x.resource, x.delta_extra_input);
                 x.constrain(self.action_root)
             })
             .collect();
@@ -165,7 +175,11 @@ impl ComplianceWitness {
         let mut index_bytes = [0u8; 32];
         let mut created_instances = Vec::new();
         for (index, witness) in self.created.iter().enumerate() {
-            delta += to_delta(&witness.resource, witness.delta_extra_input);
+            delta += to_delta(
+                &self.kind_table,
+                &witness.resource,
+                witness.delta_extra_input,
+            );
             index_bytes[..4].copy_from_slice(&(index as u32).to_be_bytes());
             nullifiers[length] = index_bytes;
             // hash the array [index] ++ nullifier array
@@ -185,6 +199,7 @@ impl ComplianceWitness {
             delta_x: delta.x_be_bytes(),
             delta_y: delta.y_be_bytes(),
             action_root: self.action_root,
+            kind_table_commitment: hash_kind_table(&self.kind_table),
         })
     }
 }
@@ -199,7 +214,33 @@ fn extra_value_to_scalar(rcv: [u8; 32]) -> Scalar {
     Scalar::reduce_le_bytes(&rcv)
 }
 
-fn to_delta(resource: &Resource, rcv: [u8; 32]) -> CurvePoint {
-    resource.kind() * quantity_to_scalar(resource.quantity)
+/// Returns the kind point for a resource: a precomputed table entry for a known
+/// kind, else in-guest hash-to-curve.
+fn lookup_kind(kind_table: &[KindTableEntry], resource: &Resource) -> CurvePoint {
+    for entry in kind_table {
+        if entry.logic_ref == resource.logic_ref && entry.label_ref == resource.label_ref {
+            let x = Secp256k1Coord::from_be_bytes(&entry.kind_x).unwrap();
+            let y = Secp256k1Coord::from_be_bytes(&entry.kind_y).unwrap();
+            return unsafe { CurvePoint::from_xy_nonidentity(x, y).unwrap() };
+        }
+    }
+    resource.kind()
+}
+
+/// Keccak commitment to the kind table
+pub(crate) fn hash_kind_table(kind_table: &[KindTableEntry]) -> [u8; 32] {
+    let mut bytes = Vec::with_capacity(kind_table.len() * 4 * 32);
+    for entry in kind_table {
+        bytes.extend_from_slice(&entry.logic_ref);
+        bytes.extend_from_slice(&entry.label_ref);
+        bytes.extend_from_slice(&entry.kind_x);
+        bytes.extend_from_slice(&entry.kind_y);
+    }
+    keccak256(&bytes)
+}
+
+fn to_delta(kind_table: &[KindTableEntry], resource: &Resource, rcv: [u8; 32]) -> CurvePoint {
+    let kind = lookup_kind(kind_table, resource);
+    kind * quantity_to_scalar(resource.quantity)
         + CurvePoint::GENERATOR * extra_value_to_scalar(rcv)
 }

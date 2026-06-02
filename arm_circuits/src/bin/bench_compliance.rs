@@ -4,7 +4,7 @@ use arm_core::instance::{AppData, ResourceLogicInstance};
 use arm_core::nullifier_key::NullifierKey;
 use arm_core::resource::Resource;
 use arm_core::tree::{Proof, SparseTree};
-use arm_core::witness::{ComplianceWitness, ConsumedWitness, CreatedWitness};
+use arm_core::witness::{ComplianceWitness, ConsumedWitness, CreatedWitness, KindTableEntry};
 use arm_traits::resource::Resource as ResourceTrait;
 use arm_vm_commit::{f_slice_to_bytes, logic_sdk_vm_config};
 use openvm_sdk_config::SdkVmConfig;
@@ -61,6 +61,16 @@ const LOGIC_PROOF_CONSUMED_CACHE: &str = concat!(
 const LOGIC_PROOF_CREATED_CACHE: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/cache/logic_proof_created.bin");
 const LOGIC_BASELINE_CACHE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/cache/logic_baseline.bin");
+
+/// secp256k1 generator's affine coordinates (big-endian) — a valid on-curve
+/// point used as a throwaway kind in the fabricated bench table.
+fn generator_coords() -> ([u8; 32], [u8; 32]) {
+    use k256::elliptic_curve::sec1::ToEncodedPoint;
+    let enc = k256::AffinePoint::GENERATOR.to_encoded_point(false);
+    let x = enc.x().expect("uncompressed point has x");
+    let y = enc.y().expect("uncompressed point has y");
+    (x[..].try_into().unwrap(), y[..].try_into().unwrap())
+}
 
 fn main() -> eyre::Result<()> {
     // ---- 1. Build sdk_logic, load exe, compute logic_exe_commit ----
@@ -242,10 +252,36 @@ fn main() -> eyre::Result<()> {
         app_data,
         logic_proof: input_commit_created,
     };
+    // `KIND_TABLE` env var toggles the optimization: set => fabricated table whose
+    // keys match the resources (lookup hits, skips hash-to-curve); unset => empty
+    // (every resource hashes-to-curve in-guest). The same exe handles both, so A/B
+    // needs no guest rebuild. Dummy on-curve point (generator) — value irrelevant.
+    let kind_table = if std::env::var_os("KIND_TABLE").is_some() {
+        eprintln!("kind table: ENABLED (lookup skips hash-to-curve)");
+        let (gx, gy) = generator_coords();
+        vec![
+            KindTableEntry {
+                logic_ref: consumed.resource.logic_ref,
+                label_ref: consumed.resource.label_ref,
+                kind_x: gx,
+                kind_y: gy,
+            },
+            KindTableEntry {
+                logic_ref: created.resource.logic_ref,
+                label_ref: created.resource.label_ref,
+                kind_x: gx,
+                kind_y: gy,
+            },
+        ]
+    } else {
+        eprintln!("kind table: empty (resources hash-to-curve in guest)");
+        vec![]
+    };
     let witness = ComplianceWitness {
         consumed: vec![consumed],
         created: vec![created],
         action_root,
+        kind_table,
     };
 
     // ---- 8. Prove compliance with DeferralInput carrying logic proofs ----

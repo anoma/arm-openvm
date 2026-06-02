@@ -58,6 +58,7 @@ pub struct ActionInstance {
     pub created: Vec<CreatedInstance>,
     pub delta_x: [u8; 32],
     pub delta_y: [u8; 32],
+    pub kind_table_commitment: [u8; 32],
     pub action_root: [u8; 32],
 }
 
@@ -116,6 +117,7 @@ sol! {
         SolCreatedInstance[] created;
         bytes32 deltaX;
         bytes32 deltaY;
+        bytes32 kindTableCommitment;
         bytes32 actionRoot;
     }
 }
@@ -184,6 +186,7 @@ impl ActionInstance {
             created: self.created.iter().map(CreatedInstance::to_sol).collect(),
             deltaX: self.delta_x.into(),
             deltaY: self.delta_y.into(),
+            kindTableCommitment: self.kind_table_commitment.into(),
             actionRoot: self.action_root.into(),
         }
     }
@@ -221,6 +224,14 @@ pub static COMPLIANCE_VK: std::sync::LazyLock<openvm_verify_stark_host::vk::VmSt
         .0
     });
 
+/// Commitment to the canonical kind table the verifier binds every proof to.
+/// Currently empty: no protocol kinds are registered, so every resource falls
+/// back to in-guest hash-to-curve. Populate the slice here when kinds are
+/// registered — provers must then supply exactly that table.
+#[cfg(feature = "host")]
+pub static CANONICAL_KIND_TABLE_COMMITMENT: std::sync::LazyLock<[u8; 32]> =
+    std::sync::LazyLock::new(|| crate::witness::hash_kind_table(&[]));
+
 #[cfg(feature = "host")]
 impl ActionVerifierInput {
     pub fn verify(&self) -> Result<(), crate::error::ArmError> {
@@ -241,6 +252,9 @@ impl ActionVerifierInput {
             return Err(ArmError::ActionRootMismatch);
         }
 
+        // bind the committed kind table to the canonical one
+        self.action_instance.check_kind_table()?;
+
         let proof = VmStarkProof::decode_from_bytes(&self.compliance_proof)
             .map_err(|_| ArmError::InvalidProof)?;
         let instance = crate::hash::keccak256(&self.action_instance.to_sol().abi_encode());
@@ -251,6 +265,16 @@ impl ActionVerifierInput {
 
 #[cfg(feature = "host")]
 impl ActionInstance {
+    /// Bind the committed kind table to the canonical one. An honest prover's
+    /// `kind_table_commitment` equals the canonical commitment; anything else
+    /// (e.g. a forged kind point) is rejected.
+    pub fn check_kind_table(&self) -> Result<(), crate::error::ArmError> {
+        if self.kind_table_commitment != *CANONICAL_KIND_TABLE_COMMITMENT {
+            return Err(crate::error::ArmError::KindTableMismatch);
+        }
+        Ok(())
+    }
+
     pub fn delta_point(&self) -> Result<k256::ProjectivePoint, crate::error::ArmError> {
         use k256::elliptic_curve::sec1::FromEncodedPoint;
         let encoded_point = k256::EncodedPoint::from_affine_coordinates(
