@@ -65,7 +65,10 @@ pub struct ActionInstance {
 /// A type implementing both compliance unit and action interfaces
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ActionVerifierInput {
-    pub action_instance: ActionInstance,
+    pub consumed: Vec<ConsumedInstance>,
+    pub created: Vec<CreatedInstance>,
+    pub delta_x: [u8; 32],
+    pub delta_y: [u8; 32],
     pub compliance_proof: Proof,
 }
 
@@ -190,7 +193,9 @@ impl ActionInstance {
             actionRoot: self.action_root.into(),
         }
     }
+}
 
+impl ActionVerifierInput {
     pub fn delta_msg(&self) -> Vec<u8> {
         let mut msg = Vec::with_capacity(32 * (self.consumed.len() + self.created.len()));
         for c in &self.consumed {
@@ -242,39 +247,32 @@ impl ActionVerifierInput {
         use openvm_stark_backend::codec::Decode;
         use openvm_verify_stark_host::VmStarkProof;
 
-        // bind the committed action root to the action's actual tags
-        let tags = self.action_instance.tags();
-        let computed_root = SparseTree::compute_tree(&tags)
+        // recompute the derivable journal fields
+        let action_root = SparseTree::compute_tree(&self.tags())
             .ok()
             .and_then(|tree| tree.root().copied())
-            .ok_or(ArmError::ActionRootMismatch)?;
-        if computed_root != self.action_instance.action_root {
-            return Err(ArmError::ActionRootMismatch);
-        }
+            .ok_or(ArmError::InvalidProof)?;
 
-        // bind the committed kind table to the canonical one
-        self.action_instance.check_kind_table()?;
+        // rebuild the journal the guest committed
+        let journal = SolActionInstance {
+            consumed: self.consumed.iter().map(ConsumedInstance::to_sol).collect(),
+            created: self.created.iter().map(CreatedInstance::to_sol).collect(),
+            deltaX: self.delta_x.into(),
+            deltaY: self.delta_y.into(),
+            kindTableCommitment: (*CANONICAL_KIND_TABLE_COMMITMENT).into(),
+            actionRoot: action_root.into(),
+        };
 
         let proof = VmStarkProof::decode_from_bytes(&self.compliance_proof)
             .map_err(|_| ArmError::InvalidProof)?;
-        let instance = crate::hash::keccak256(&self.action_instance.to_sol().abi_encode());
+        let instance = crate::hash::keccak256(&journal.abi_encode());
 
         verify_stark(&COMPLIANCE_VK, &instance, &proof)
     }
 }
 
 #[cfg(feature = "host")]
-impl ActionInstance {
-    /// Bind the committed kind table to the canonical one. An honest prover's
-    /// `kind_table_commitment` equals the canonical commitment; anything else
-    /// (e.g. a forged kind point) is rejected.
-    pub fn check_kind_table(&self) -> Result<(), crate::error::ArmError> {
-        if self.kind_table_commitment != *CANONICAL_KIND_TABLE_COMMITMENT {
-            return Err(crate::error::ArmError::KindTableMismatch);
-        }
-        Ok(())
-    }
-
+impl ActionVerifierInput {
     pub fn delta_point(&self) -> Result<k256::ProjectivePoint, crate::error::ArmError> {
         use k256::elliptic_curve::sec1::FromEncodedPoint;
         let encoded_point = k256::EncodedPoint::from_affine_coordinates(
@@ -294,7 +292,7 @@ impl Transaction {
     pub fn nullifiers(&self) -> Vec<[u8; 32]> {
         self.units
             .iter()
-            .flat_map(|u| u.action_instance.consumed.iter().map(|c| c.nullifier))
+            .flat_map(|u| u.consumed.iter().map(|c| c.nullifier))
             .collect()
     }
 
@@ -303,7 +301,7 @@ impl Transaction {
     pub fn commitments(&self) -> Vec<[u8; 32]> {
         self.units
             .iter()
-            .flat_map(|u| u.action_instance.created.iter().map(|c| c.commitment))
+            .flat_map(|u| u.created.iter().map(|c| c.commitment))
             .collect()
     }
 
@@ -311,7 +309,7 @@ impl Transaction {
     pub fn roots(&self) -> BTreeSet<[u8; 32]> {
         self.units
             .iter()
-            .flat_map(|u| u.action_instance.consumed.iter().map(|c| c.root))
+            .flat_map(|u| u.consumed.iter().map(|c| c.root))
             .collect()
     }
 }
@@ -329,12 +327,12 @@ impl Transaction {
         let mut seen_nullifiers = BTreeSet::new();
         let mut seen_commitments = BTreeSet::new();
         for unit in &self.units {
-            for c in &unit.action_instance.consumed {
+            for c in &unit.consumed {
                 if !seen_nullifiers.insert(c.nullifier) {
                     return Err(ArmError::NullifierDuplication);
                 }
             }
-            for c in &unit.action_instance.created {
+            for c in &unit.created {
                 if !seen_commitments.insert(c.commitment) {
                     return Err(ArmError::CommitmentDuplication);
                 }
@@ -344,14 +342,10 @@ impl Transaction {
         let deltas: Vec<k256::ProjectivePoint> = self
             .units
             .iter()
-            .map(|u| u.action_instance.delta_point())
+            .map(|u| u.delta_point())
             .collect::<Result<Vec<_>, _>>()?;
         let instance = DeltaInstance::from_deltas(&deltas)?;
-        let msg: Vec<u8> = self
-            .units
-            .iter()
-            .flat_map(|u| u.action_instance.delta_msg())
-            .collect();
+        let msg: Vec<u8> = self.units.iter().flat_map(|u| u.delta_msg()).collect();
         let proof = DeltaProof::from_bytes(&self.delta_proof)?;
         DeltaProof::verify(&msg, &proof, instance)?;
 

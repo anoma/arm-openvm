@@ -69,13 +69,13 @@ fn verify_and_extract<'a>(
     let consumed_with_appdata = tx
         .units
         .iter()
-        .flat_map(|u| u.action_instance.consumed.iter())
+        .flat_map(|u| u.consumed.iter())
         .map(|c| (to_bin(env, &c.nullifier), app_data_blobs(env, &c.app_data)))
         .collect();
     let created_with_appdata = tx
         .units
         .iter()
-        .flat_map(|u| u.action_instance.created.iter())
+        .flat_map(|u| u.created.iter())
         .map(|c| (to_bin(env, &c.commitment), app_data_blobs(env, &c.app_data)))
         .collect();
     let roots = tx.roots().iter().map(|r| to_bin(env, r)).collect();

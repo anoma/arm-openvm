@@ -22,10 +22,6 @@ pub enum ArmError {
     NullifierDuplication,
     #[error("Commitment appears in more than one action in the transaction")]
     CommitmentDuplication,
-    #[error("Action root does not match the action's tags")]
-    ActionRootMismatch,
-    #[error("Kind table commitment does not match the canonical table")]
-    KindTableMismatch,
     #[error("Delta proof verification failed")]
     DeltaProofVerificationFailed,
     #[error("RM Error")]
