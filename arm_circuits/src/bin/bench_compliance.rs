@@ -14,9 +14,10 @@ use openvm_deferral_circuit::DeferralFn;
 use openvm_sdk::{
     DeferralInput, F, Sdk, StdIn,
     config::{AggregationConfig, AggregationSystemParams, AppConfig},
-    fs::read_object_from_file,
+    fs::{read_object_from_file, write_object_to_file},
     prover::DeferralProver,
 };
+use openvm_stark_backend::codec::{Decode, Encode};
 use openvm_stark_sdk::config::{
     app_params_with_100_bits_security, internal_params_with_100_bits_security,
     leaf_params_with_100_bits_security, root_params_with_100_bits_security,
@@ -24,7 +25,7 @@ use openvm_stark_sdk::config::{
 use openvm_verify_stark_circuit::extension::{
     get_deferral_state, get_raw_deferral_results, verify_stark_deferral_fn,
 };
-use openvm_verify_stark_host::vk::VmStarkVerifyingKey;
+use openvm_verify_stark_host::{VmStarkProof, vk::VmStarkVerifyingKey};
 
 #[cfg(not(feature = "cuda"))]
 use openvm_verify_stark_circuit::prover::{
@@ -40,6 +41,7 @@ use openvm_verify_stark_circuit::prover::{
 #[cfg(feature = "cuda")]
 type E = openvm_cuda_backend::BabyBearPoseidon2GpuEngine;
 
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -51,6 +53,14 @@ const COMPLIANCE_VMEXE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/compliance/openvm/release/compliance-guest.vmexe"
 );
+const CACHE_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/cache");
+const LOGIC_PROOF_CONSUMED_CACHE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/cache/logic_proof_consumed.bin"
+);
+const LOGIC_PROOF_CREATED_CACHE: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/cache/logic_proof_created.bin");
+const LOGIC_BASELINE_CACHE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/cache/logic_baseline.bin");
 
 fn main() -> eyre::Result<()> {
     // ---- 1. Build sdk_logic, load exe, compute logic_exe_commit ----
@@ -121,17 +131,38 @@ fn main() -> eyre::Result<()> {
         app_data: app_data.clone(),
     };
 
-    let t = Instant::now();
-    let mut stdin = StdIn::default();
-    stdin.write(&logic_witness_consumed);
-    let (logic_proof_consumed, baseline) = logic_sdk.prove(logic_exe.clone(), stdin, &[])?;
-    eprintln!("logic proof (consumed): {:?}", t.elapsed());
+    // Cache the (slow) logic proofs so repeated compliance benches skip them.
+    // Delete `cache/` if the trivial-logic guest or the fixture changes.
+    let (logic_proof_consumed, logic_proof_created, baseline) =
+        if Path::new(LOGIC_PROOF_CONSUMED_CACHE).exists()
+            && Path::new(LOGIC_PROOF_CREATED_CACHE).exists()
+            && Path::new(LOGIC_BASELINE_CACHE).exists()
+        {
+            eprintln!("logic proofs: loaded from cache");
+            (
+                VmStarkProof::decode_from_bytes(&std::fs::read(LOGIC_PROOF_CONSUMED_CACHE)?)?,
+                VmStarkProof::decode_from_bytes(&std::fs::read(LOGIC_PROOF_CREATED_CACHE)?)?,
+                read_object_from_file(LOGIC_BASELINE_CACHE)?,
+            )
+        } else {
+            let t = Instant::now();
+            let mut stdin = StdIn::default();
+            stdin.write(&logic_witness_consumed);
+            let (proof_consumed, baseline) = logic_sdk.prove(logic_exe.clone(), stdin, &[])?;
+            eprintln!("logic proof (consumed): {:?}", t.elapsed());
 
-    let t = Instant::now();
-    let mut stdin = StdIn::default();
-    stdin.write(&logic_witness_created);
-    let (logic_proof_created, _) = logic_sdk.prove(logic_exe, stdin, &[])?;
-    eprintln!("logic proof (created):  {:?}", t.elapsed());
+            let t = Instant::now();
+            let mut stdin = StdIn::default();
+            stdin.write(&logic_witness_created);
+            let (proof_created, _) = logic_sdk.prove(logic_exe, stdin, &[])?;
+            eprintln!("logic proof (created):  {:?}", t.elapsed());
+
+            std::fs::create_dir_all(CACHE_DIR)?;
+            std::fs::write(LOGIC_PROOF_CONSUMED_CACHE, proof_consumed.encode_to_vec()?)?;
+            std::fs::write(LOGIC_PROOF_CREATED_CACHE, proof_created.encode_to_vec()?)?;
+            write_object_to_file(LOGIC_BASELINE_CACHE, &baseline)?;
+            (proof_consumed, proof_created, baseline)
+        };
 
     // ---- 4. Build deferral plumbing on top of sdk_logic's IR ----
     let agg = logic_sdk.agg_prover();

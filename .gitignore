@@ -8,6 +8,9 @@ Cargo.lock
 \#*\#
 .dir-locals.el
 
+# bench logic-proof cache
+/arm_circuits/cache/
+
 # Elixir / mix
 /_build/
 /deps/
