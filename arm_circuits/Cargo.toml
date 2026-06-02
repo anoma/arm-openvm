@@ -6,7 +6,7 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-arm_core = { path = "../arm_core" }
+arm_core = { path = "../arm_core", default-features = false }
 arm_traits = { path = "../arm_traits", default-features = false }
 arm_vm_commit = { path = "../arm_vm_commit" }
 openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", branch = "develop-v2", default-features = false, features = ["parallel"]}
