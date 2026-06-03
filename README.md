@@ -1,6 +1,6 @@
 # Anoma OpenVM Resource Machine (Prototype)
 
-A shielded resource machine implementation built on the beta tag of [OpenVM](https://github.com/openvm-org/openvm) zkVM.
+A shielded resource machine implementation built on the [OpenVM](https://github.com/openvm-org/openvm) zkVM.
 
 **WARNING** This repo is a work-in-progress.
 
@@ -12,29 +12,33 @@ A shielded resource machine implementation built on the beta tag of [OpenVM](htt
 ## Layout
 
 - `arm_traits/` — shared trait definitions
-- `arm_core/` — resource, compliance, and instance types; host + guest helpers
-- `arm_circuits/` — host code and guest programs
-  - `compliance/` — compliance unit guest (separate workspace, built with `cargo openvm`)
+- `arm_core/` — resource, witness, instance, delta, and action-tree types
+- `arm_circuits/` — guest programs and benchmarks
+  - `compliance/` — compliance unit guest (separate workspace)
+  - `trivial_logic/` — placeholder resource-logic guest (separate workspace)
+  - `src/bin/bench_compliance.rs` — compliance proving bench
+- `arm_vm_commit/` — host tooling generating the embedded verifying key and VM-commit constants
+- `arm_nif/` — Rustler NIFs exposing transaction verification to Elixir
+- `lib/`, `mix.exs` — Elixir wrapper for the NIFs
 
-## Build
+## Dependencies
 
-Compliance guest requires [`cargo-openvm`](https://github.com/openvm-org/openvm) of the appropriate tag:
+- **Rust** — host crates build on stable (tested with 1.92.0). The guest toolchain is a pinned nightly that `cargo openvm build` auto-installs via `rustup`.
+- **Elixir** — `~> 1.17`, for the NIF wrapper.
+- **openvm** — install `cargo-openvm` from the openvm revision the crates pin:
+  ```bash
+  cargo install --locked --git https://github.com/openvm-org/openvm.git --rev <pinned-rev> cargo-openvm
+  ```
+- **KZG SRS** — only for SNARK proofs:
+  ```bash
+  cargo openvm setup --evm --download
+  ```
 
-```bash
-cargo install --locked --git https://github.com/openvm-org/openvm.git --tag v2.0.0-beta.2 cargo-openvm
-```
+## Building & proving
 
-The .vmexe file can afterwards be generated via:
-
-```bash
-cd arm_circuits/compliance && cargo openvm build
-```
-
-One can run the compliance STARK-generation bench from root using:
-
-```bash
-cargo run --release -p arm_circuits --bin bench-compliance
-```
+Building the guests, running the bench (STARK / SNARK / GPU), the logic-proof cache,
+and regenerating the proving/verifying keys and VM commits are documented in
+[`arm_circuits/README.md`](arm_circuits/README.md).
 
 ## License
 
