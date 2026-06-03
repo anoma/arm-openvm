@@ -136,7 +136,8 @@ pub fn construct_compliance_vk(
 
     // .vmexe is bitcode-serialized by `cargo openvm build`; deserialize to build the StarkProver
     // and get the (vmexe-dependent) baseline.
-    let vmexe: openvm_circuit::arch::instructions::exe::VmExe<F> = bitcode::deserialize(vmexe_bytes)?;
+    let vmexe: openvm_circuit::arch::instructions::exe::VmExe<F> =
+        bitcode::deserialize(vmexe_bytes)?;
     let prover = compliance_sdk.prover(vmexe)?;
     let baseline = prover.generate_baseline();
     let mvk = compliance_sdk.agg_vk().as_ref().clone();

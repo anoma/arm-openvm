@@ -11,7 +11,7 @@ use crate::{
 };
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
-use alloy_sol_types::{SolValue, sol};
+use alloy_sol_types::sol;
 use openvm_verify_stark_guest::{ProofOutput, verify_stark};
 
 pub type Proof = Vec<u8>;
@@ -93,13 +93,6 @@ sol! {
         SolPayload[] encryptionPayload;
         SolPayload[] externalPayload;
         SolPayload[] discoveryPayload;
-    }
-
-    struct SolLogicInstance {
-        bytes32 tag;
-        bytes32 actionRoot;
-        bool isConsumed;
-        SolAppData appData;
     }
 
     struct SolConsumedInstance {
@@ -363,18 +356,30 @@ pub struct ResourceLogicInstance {
 }
 
 impl ResourceLogicInstance {
-    pub fn to_sol(&self) -> SolLogicInstance {
-        SolLogicInstance {
-            tag: self.tag.into(),
-            actionRoot: self.action_root.into(),
-            isConsumed: self.is_consumed,
-            appData: self.app_data.to_sol(),
+    /// keccak commitment to the instance
+    pub fn logic_digest(&self) -> [u8; 32] {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&self.tag);
+        buf.extend_from_slice(&self.action_root);
+        buf.push(self.is_consumed as u8);
+        for list in [
+            &self.app_data.resource_payload,
+            &self.app_data.encryption_payload,
+            &self.app_data.external_payload,
+            &self.app_data.discovery_payload,
+        ] {
+            buf.extend_from_slice(&(list.len() as u32).to_le_bytes());
+            for p in list {
+                buf.extend_from_slice(&(p.data.len() as u32).to_le_bytes());
+                buf.extend_from_slice(&p.data);
+                buf.push(p.deletion_criterion as u8);
+            }
         }
+        keccak256(&buf)
     }
 
     pub fn verify(&self, logic_ref: [u8; 32], proof_commit: [u8; 32]) -> () {
-        // we assume each proof output is a keccak of the abi encoding of the specified instance
-        let guest_output = keccak256(&self.to_sol().abi_encode());
+        let guest_output = self.logic_digest();
         // TODO! Double check that each byte is cast into a word
         let revealed_bytes: Vec<u8> = guest_output.iter().flat_map(|&b| [b, 0, 0, 0]).collect();
         let expected_output = ProofOutput {
