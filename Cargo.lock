@@ -457,6 +457,7 @@ dependencies = [
 name = "arm_core"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "alloy-sol-types",
  "arm_traits",
  "bincode 2.0.1",
