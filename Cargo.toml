@@ -1,6 +1,6 @@
 [workspace]
 members = ["arm_traits", "arm_core", "arm_circuits", "arm_vm_commit", "arm_nif"]
-exclude = ["arm_circuits/compliance", "arm_circuits/trivial_logic"]
+exclude = ["arm_circuits/compliance", "arm_circuits/trivial_logic", "arm_circuits/transfer_auth"]
 resolver = "2"
 
 [workspace.package]

@@ -48,13 +48,16 @@ pub fn compliance_sdk_vm_config() -> Result<SdkVmConfig> {
     Ok(SdkVmConfig::from_toml(include_str!("../compliance.toml"))?)
 }
 
-pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
-    let app_config = AppConfig::new(
-        logic_sdk_vm_config()?,
-        // assuming 2^21 trace size
-        // TODO: Check what would be most proper
-        app_params_with_100_bits_security(21),
-    );
+pub fn transfer_auth_sdk_vm_config() -> Result<SdkVmConfig> {
+    Ok(SdkVmConfig::from_toml(include_str!("../transfer_auth.toml"))?)
+}
+
+/// `app_vm_commit` for a plain logic VM (no deferral): hash the app/leaf/internal
+/// vk commits. Shared by every logic-side config.
+fn vm_commit_from_config(vm_config: SdkVmConfig) -> Result<[u8; 32]> {
+    // assuming 2^21 trace size
+    // TODO: Check what would be most proper
+    let app_config = AppConfig::new(vm_config, app_params_with_100_bits_security(21));
     let agg_params = AggregationSystemParams {
         leaf: leaf_params_with_100_bits_security(),
         internal: internal_params_with_100_bits_security(),
@@ -81,6 +84,14 @@ pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
     Ok(f_slice_to_bytes(&digest)
         .try_into()
         .expect("f_slice_to_bytes of [F; 8] always yields 32 bytes"))
+}
+
+pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
+    vm_commit_from_config(logic_sdk_vm_config()?)
+}
+
+pub fn compute_transfer_auth_vm_commit() -> Result<[u8; 32]> {
+    vm_commit_from_config(transfer_auth_sdk_vm_config()?)
 }
 
 pub fn construct_compliance_vk(

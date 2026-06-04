@@ -30,3 +30,7 @@ path = "src/bin/print_compliance.rs"
 [[bin]]
 name = "print-compliance-vk"
 path = "src/bin/print_compliance_vk.rs"
+
+[[bin]]
+name = "print-transfer-auth-vm-commit"
+path = "src/bin/print_transfer_auth.rs"
