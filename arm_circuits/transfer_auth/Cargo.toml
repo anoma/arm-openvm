@@ -1,0 +1,27 @@
+[workspace]
+
+[package]
+name = "transfer-auth-guest"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/anoma/arm-openvm"
+
+[build-dependencies]
+openvm-build = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+
+[dependencies]
+openvm = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe", features = ["std"]}
+arm_core = { path = "../../arm_core", default-features = false, features = ["transfer_auth"] }
+# for reading witness data
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+
+# secp256k1 moduli + curve declarations consumed by `openvm::init!()`
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe" }
+openvm-k256 = { git = "https://github.com/openvm-org/openvm", rev = "f08f0fe", package = "k256" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
