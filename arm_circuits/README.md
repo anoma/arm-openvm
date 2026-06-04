@@ -2,7 +2,7 @@
 
 Guest programs and benchmarks for the OpenVM RM.
 
-The two guests (`compliance/`, `trivial_logic/`) are separate
+The three guests (`compliance/`, `trivial_logic/`, `transfer_auth/`) are separate
 workspaces built with `cargo openvm build`; everything else here is host code.
 
 See the [root README](../README.md) for prerequisites (Rust, `cargo-openvm`, the SNARK SRS).
@@ -14,6 +14,7 @@ Build each guest's `.vmexe`:
 ```bash
 cd arm_circuits/compliance    && cargo openvm build
 cd arm_circuits/trivial_logic && cargo openvm build
+cd arm_circuits/transfer_auth && cargo openvm build
 ```
 
 ## Running the bench

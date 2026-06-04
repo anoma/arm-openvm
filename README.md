@@ -16,6 +16,7 @@ A shielded resource machine implementation built on the [OpenVM](https://github.
 - `arm_circuits/` — guest programs and benchmarks
   - `compliance/` — compliance unit guest (separate workspace)
   - `trivial_logic/` — placeholder resource-logic guest (separate workspace)
+  - `transfer_auth/` — transfer (ERC20) resource-logic guest (separate workspace)
   - `src/bin/bench_compliance.rs` — compliance proving bench
 - `arm_vm_commit/` — host tooling generating the embedded verifying key and VM-commit constants
 - `arm_nif/` — Rustler NIFs exposing transaction verification to Elixir
