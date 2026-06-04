@@ -17,4 +17,6 @@ pub mod nullifier_key;
 pub mod proving;
 pub mod resource;
 pub mod tree;
+#[cfg(feature = "transfer_auth")]
+pub mod transfer_auth;
 pub mod witness;
