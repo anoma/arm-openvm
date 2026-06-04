@@ -48,10 +48,6 @@ pub fn compliance_sdk_vm_config() -> Result<SdkVmConfig> {
     Ok(SdkVmConfig::from_toml(include_str!("../compliance.toml"))?)
 }
 
-pub fn transfer_auth_sdk_vm_config() -> Result<SdkVmConfig> {
-    Ok(SdkVmConfig::from_toml(include_str!("../transfer_auth.toml"))?)
-}
-
 /// `app_vm_commit` for a plain logic VM (no deferral): hash the app/leaf/internal
 /// vk commits. Shared by every logic-side config.
 fn vm_commit_from_config(vm_config: SdkVmConfig) -> Result<[u8; 32]> {
@@ -88,10 +84,6 @@ fn vm_commit_from_config(vm_config: SdkVmConfig) -> Result<[u8; 32]> {
 
 pub fn compute_logic_vm_commit() -> Result<[u8; 32]> {
     vm_commit_from_config(logic_sdk_vm_config()?)
-}
-
-pub fn compute_transfer_auth_vm_commit() -> Result<[u8; 32]> {
-    vm_commit_from_config(transfer_auth_sdk_vm_config()?)
 }
 
 pub fn construct_compliance_vk(
