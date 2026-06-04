@@ -24,6 +24,16 @@ pub enum ArmError {
     CommitmentDuplication,
     #[error("Delta proof verification failed")]
     DeltaProofVerificationFailed,
+    #[error("Authority signature verification failed")]
+    InvalidSignature,
+    #[error("Missing witness field: {0}")]
+    MissingField(&'static str),
+    #[error("Resource value_ref binding mismatch")]
+    ValueRefMismatch,
+    #[error("Resource label_ref mismatch")]
+    LabelRefMismatch,
+    #[error("Invalid forwarder calldata: {0}")]
+    InvalidCalldata(&'static str),
     #[error("RM Error")]
     GeneralError,
 }
