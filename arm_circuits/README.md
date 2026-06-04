@@ -17,7 +17,7 @@ cd arm_circuits/trivial_logic && cargo openvm build
 cd arm_circuits/transfer_auth && cargo openvm build
 ```
 
-## Running the bench
+## Running the benches
 
 `bench-compliance` proves the two trivial logics, then the compliance proof, end to end:
 
@@ -30,6 +30,22 @@ Modes:
 - **`--features evm`** — wraps to an EVM-verifiable halo2/KZG SNARK (`prove_evm`).
 - **`--features cuda`** — runs the prover on GPU.
 - **`KIND_TABLE=<ANYTHING>`** (env var) — supplies a fabricated kind table, unset = empty table.
+
+`bench-transfer` runs the same end-to-end flow with a `transfer_auth` logic instead of
+trivial logic — both share the one VM, so `logic_ref` is just the app_commit. `FLOW` picks
+the transfer flow (default `wrap`):
+
+```bash
+FLOW=wrap cargo run --release -p arm_circuits --bin bench-transfer
+```
+
+- **`wrap`** — consume an ephemeral wrap resource (Permit2 fields forwarded, unverified
+  in-circuit) → create the persistent wrapped-token resource.
+- **`unwrap`** — consume a persistent resource → create the ephemeral unwrap resource.
+- **`send`** — consume a persistent resource → create another persistent resource.
+
+The persistent-consume side (unwrap/send) is authorized by a secp256k1 signature over the
+action root, signed host-side (openvm-k256 signing is stubbed).
 
 ## Logic-proof cache
 
