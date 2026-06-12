@@ -104,7 +104,7 @@ impl SparseTree {
                 .copied()
                 .unwrap_or(empty_nodes[level]);
 
-            let is_left = index % 2 == 0;
+            let is_left = sibling_index % 2 == 0;
             path.push(Sibling {
                 node: sibling_node,
                 is_left,
@@ -150,4 +150,48 @@ pub fn empty_nodes(depth: usize) -> Vec<[u8; 32]> {
     }
 
     nodes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn leaves(n: u8) -> Vec<[u8; 32]> {
+        (1..=n).map(|i| [i; 32]).collect()
+    }
+
+    #[test]
+    fn proofs_round_trip() {
+        for n in 1..=16 {
+            let leaves = leaves(n);
+            let tree = SparseTree::compute_tree(&leaves).unwrap();
+            let root = *tree.root().unwrap();
+
+            for leaf in &leaves {
+                let proof = tree.prove_for(leaf).unwrap();
+                assert!(proof.verify(*leaf, root));
+            }
+        }
+    }
+
+    #[test]
+    fn sibling_flag_describes_the_sibling() {
+        let leaves = leaves(2);
+        let tree = SparseTree::compute_tree(&leaves).unwrap();
+
+        // the first leaf's sibling sits on its right
+        assert!(!tree.prove_for(&leaves[0]).unwrap().path[0].is_left);
+        // the second leaf's sibling sits on its left
+        assert!(tree.prove_for(&leaves[1]).unwrap().path[0].is_left);
+    }
+
+    #[test]
+    fn proof_fails_for_wrong_leaf() {
+        let leaves = leaves(3);
+        let tree = SparseTree::compute_tree(&leaves).unwrap();
+        let root = *tree.root().unwrap();
+        let proof = tree.prove_for(&leaves[0]).unwrap();
+
+        assert!(!proof.verify(leaves[1], root));
+    }
 }
